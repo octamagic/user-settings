@@ -1,0 +1,14 @@
+site_name: user-settings
+repo_name: user-settings
+repo_url: https://github.com/soundcloud/user-settings
+dev_addr: 0.0.0.0:8000
+plugins:
+  - search
+  - git-revision-date-localized:
+      type: date
+      fallback_to_build_date: true
+  - techdocs-core
+theme:
+  name: material
+  features:
+    - tabs

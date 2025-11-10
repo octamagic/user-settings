@@ -1,0 +1,118 @@
+name: Deployment
+on: deployment
+concurrency: ci-${{ github.event.deployment.environment }}-${{ github.event.deployment.task }}-${{ github.event.deployment.payload }}
+env:
+  SYSTEM: user-settings
+  COMPONENT: api
+  CHANNEL: "api-team-deploys"
+jobs:
+  set-config:
+    runs-on: [self-hosted, i-build-prod]
+    timeout-minutes: 5
+    outputs:
+      profile: ${{ steps[github.event.deployment.environment].outputs.profile }}
+    steps:
+      - id: production
+        if: github.event.deployment.environment == 'production'
+        shell: bash
+        run: |
+          echo "profile=062107869946" >> $GITHUB_OUTPUT
+      - id: staging
+        if: github.event.deployment.environment == 'staging'
+        shell: bash
+        run: |
+          echo "profile=981069094484" >> $GITHUB_OUTPUT
+      - id: development
+        if: github.event.deployment.environment == 'development'
+        shell: bash
+        run: |
+          echo "profile=045673982243" >> $GITHUB_OUTPUT
+  deploy-app:
+    if: github.event.deployment.task == 'deploy:app'
+    name: "deploy app ${{ github.event.deployment.ref }} to ${{ github.event.deployment.environment }}"
+    runs-on: [self-hosted, i-build-prod]
+    environment: ${{ github.event.deployment.environment }}
+    permissions:
+      id-token: write
+      deployments: write
+      contents: read
+    needs:
+      - set-config
+    timeout-minutes: 60
+    env:
+      TERRAFORM_VERSION: "1.5.7"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.deployment.ref }}
+      - name: setup github http auth
+        shell: bash
+        run: |
+          echo "https://sc-github-bot:${{ secrets.SC_GITHUB_BOT_PAT }}@github.com" > "${HOME}/.git-credentials"
+          git config --global credential.helper store
+      - name: setup alerts credentials
+        uses: soundcloud/sc-github-actions/setup-tf-alert-permissions@setup-tf-alert-permissions-v2.0.0
+        with:
+          aws_profile: '${{ needs.set-config.outputs.profile }}'
+      - name: notify deployment start
+        uses: soundcloud/sc-github-actions/deploy-notify@master
+        continue-on-error: true
+        with:
+          system: ${{ env.SYSTEM }}
+          component: ${{ env.COMPONENT }}
+          environment: ${{ github.event.deployment.environment }}
+          channel: ${{ env.CHANNEL }}
+          user: ${{ github.actor }}
+      - uses: soundcloud/sc-github-actions/tf-apply@tf-apply-v1.8.3
+        name: Terraform Apply
+        id: tf-apply
+        env:
+          TF_VAR_commit_sha: ${{ github.sha }}
+          TF_VAR_build_number: ${{ github.run_id }}
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          working_directory: services/app/terraform
+          config_directory: config/${{ github.event.deployment.environment }}
+          aws_role: arn:aws:iam::${{ needs.set-config.outputs.profile }}:role/automation-gha
+          aws_region: eu-central-1
+          init_arguments: "-reconfigure"
+          arguments: "-lock=false"
+      - name: wait for deployment
+        shell: bash
+        run: aws ecs wait services-stable --cluster api-core-eu-central-1-${{ github.event.deployment.environment }} --services user-settings-${{ github.event.deployment.environment }}
+      - name: notify deployment end
+        uses: soundcloud/sc-github-actions/deploy-notify@master
+        continue-on-error: true
+        with:
+          system: ${{ env.SYSTEM }}
+          component: ${{ env.COMPONENT }}
+          environment: ${{ github.event.deployment.environment }}
+          channel: ${{ env.CHANNEL }}
+          user: ${{ github.actor }}
+          completed: true
+          completed-status: ${{ steps.tf-apply.outcome }}
+      - name: mark deployment as successful
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments/${{ github.event.deployment.id }}/statuses \
+          -f state=success \
+          -f environment=${{ github.event.deployment.environment }} \
+          -f description="Completed deployment of ${{ github.event.deployment.ref }} to ${{ github.event.deployment.environment }}"
+      - name: mark deployment as failed
+        if: ${{ failure() }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments/${{ github.event.deployment.id }}/statuses \
+          -f state=failure \
+          -f environment=${{ github.event.deployment.environment }} \
+          -f description="Failed deployment of ${{ github.event.deployment.ref }} to ${{ github.event.deployment.environment }}"
+      - name: mark deployment as cancelled
+        if: ${{ cancelled() }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments/${{ github.event.deployment.id }}/statuses \
+          -f state=failure \
+          -f environment=${{ github.event.deployment.environment }} \
+          -f description="Cancelled deployment of ${{ github.event.deployment.ref }} to ${{ github.event.deployment.environment }}"

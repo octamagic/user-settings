@@ -1,0 +1,6 @@
+{
+  "_schema": "soundcloud/applicationmanifest/v2",
+  "name": "user-settings",
+  "description": "Manages User Preferences",
+  "owner": "api-team"
+}

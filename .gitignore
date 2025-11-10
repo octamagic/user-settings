@@ -1,0 +1,39 @@
+# terraform
+.terraform
+tf.plan
+plan.tfplan
+.terraform.lock.hcl
+
+# ide
+.idea
+.vscode
+*.swp
+
+# generated
+generated
+
+# bin
+bin
+__debug*
+
+# local dev
+*.db
+testdata
+tmp
+docker/**/data
+
+# os
+.DS_Store
+
+# node / ts
+dist
+node_modules
+*.log
+
+# test
+coverage
+coverage.out
+testapp
+
+.git-credentials
+.task

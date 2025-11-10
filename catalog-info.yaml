@@ -1,0 +1,25 @@
+apiVersion: backstage.io/v1alpha1
+kind: API
+spec:
+  type: grpc
+  lifecycle: development
+  owner: api-team
+  definition:
+    $text: ./services/app/rpc/user_settings_api.proto
+metadata:
+  name: user_settings_api.proto
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+spec:
+  type: foundational_service
+  lifecycle: development
+  owner: api-team
+  providesApis:
+    - user_settings_api.proto
+metadata:
+  name: "user-settings"
+  description: "Central repository for user-modifiable settings."
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+    github.com/project-slug: soundcloud/user-settings

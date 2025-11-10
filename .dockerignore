@@ -1,0 +1,15 @@
+# files
+.air.toml
+catalog-info.yml
+manifest.json
+Taskfile.yml
+README.md
+.git-credentials
+
+# dirs
+bin
+docker
+docs
+terraform
+.github
+lambda

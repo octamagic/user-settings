@@ -1,0 +1,84 @@
+name: "[App] Manual Deployment"
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        description: "The environment to deploy to"
+        required: true
+        options:
+          - production
+          - staging
+          - development
+        default: staging
+      ref:
+        description: "Branch or commit SHA to deploy from"
+        required: true
+        default: "main"
+jobs:
+  set-config:
+    runs-on: [self-hosted, i-build-prod]
+    timeout-minutes: 5
+    outputs:
+      profile: ${{ steps[inputs.environment].outputs.profile }}
+    steps:
+      - id: production
+        if: inputs.environment == 'production'
+        shell: bash
+        run: |
+          echo "profile=062107869946" >> $GITHUB_OUTPUT
+      - id: staging
+        if: inputs.environment == 'staging'
+        shell: bash
+        run: |
+          echo "profile=981069094484" >> $GITHUB_OUTPUT
+      - id: development
+        if: inputs.environment == 'development'
+        shell: bash
+        run: |
+          echo "profile=045673982243" >> $GITHUB_OUTPUT
+  deploy:
+    needs: set-config
+    runs-on: [self-hosted, i-build-prod]
+    if: contains(fromJSON('["production","staging","development"]'), github.event.inputs.environment )
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        name: validate ref existence
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.ref }}
+      - name: get canonical commit ref
+        id: canonical-commit-ref
+        shell: bash
+        run: echo "::set-output name=ref::$(git log --grep 'skip ci' --invert-grep -n 1 --pretty='format:%H')"
+      - name: check commit ref presence in default branch
+        if: contains(fromJSON('["production"]'), github.event.inputs.environment )
+        env:
+          COMMIT_REF: ${{ steps.canonical-commit-ref.outputs.ref }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: git branch --remote --contains "$COMMIT_REF" | grep -m 1 -q "$DEFAULT_BRANCH" && echo "commit ref found in default branch ✅" || (echo "::error::Only commit refs present in default branch can be deployed to this env\!" && false)
+      - name: trigger deployment event
+        env:
+          GH_TOKEN: ${{ secrets.SC_GITHUB_BOT_PAT }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments \
+          -f task=deploy:app \
+          -f ref=${{ steps.canonical-commit-ref.outputs.ref }} \
+          -f environment=${{ github.event.inputs.environment }} \
+          -f description="Deploy api to ${{ github.event.inputs.environment }}" \
+          -F production_environment=${{ github.event.inputs.environment == 'production' }} \
+          -F auto_merge=false \
+          -f required_contexts[]="build-and-test / docker-publish (user-settings, services/app/Dockerfile)"
+  no-deploy:
+    runs-on: [self-hosted, i-build-prod]
+    if: ${{ !contains(fromJSON('["production","staging","development"]'), github.event.inputs.environment ) }}
+    timeout-minutes: 5
+    steps:
+      - name: log invalid input
+        shell: bash
+        run: |
+          echo "::error::Unknown environment param: ${{ github.event.inputs.environment }}"
+          echo "::error::Allowed environments are 'staging' and 'production'"

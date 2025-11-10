@@ -1,0 +1,3 @@
+bucket = "045673982243-api-core-dev-development-tf-state"
+dynamodb_table = "045673982243-api-core-dev-development-tf-lock"
+role_arn = "arn:aws:iam::145582369311:role/tf-state-manager-045673982243"

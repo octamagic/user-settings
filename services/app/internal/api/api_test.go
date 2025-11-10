@@ -1,0 +1,282 @@
+package api
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	sessionproto "github.com/soundcloud/gokit/v2/twirp/common_session"
+	proto "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
+	"github.com/soundcloud/user-settings/internal/mappers"
+	"github.com/soundcloud/user-settings/internal/prefsrepo"
+	"github.com/soundcloud/user-settings/internal/prefsservice"
+	"github.com/soundcloud/user-settings/internal/prefsservice/domain"
+	"github.com/stretchr/testify/assert"
+	"github.com/twitchtv/twirp"
+	"go.uber.org/mock/gomock"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+)
+
+func setupTestAPI(ctrl *gomock.Controller) *prefsservice.MockSettingsService {
+	mockService := prefsservice.NewMockSettingsService(ctrl)
+	protoMapper := mappers.ProtoMapper{}
+	InitService(mockService, protoMapper)
+	return mockService
+}
+
+const SettingName = "testSetting"
+
+func createTestSetting(userUrn string) *prefsrepo.Setting {
+	if userUrn == "" {
+		userUrn = "soundcloud:users:123456"
+	}
+	return &prefsrepo.Setting{
+		UserUrn:     userUrn,
+		Name:        SettingName,
+		SettingType: prefsrepo.SettingTypeBoolean.String(),
+		UpdatedAt:   time.Now(),
+		Value:       `true`,
+	}
+}
+
+func createTestProtoPutSetting() *proto.PutSetting {
+	return &proto.PutSetting{
+		Type:  proto.SettingType_BOOLEAN,
+		Value: `true`,
+		Name:  SettingName,
+	}
+}
+
+func createTestUserSession() *sessionproto.UserSession {
+	return &sessionproto.UserSession{
+		UserUrn:  wrapperspb.String("soundcloud:users:123456"),
+		AgentUrn: wrapperspb.String("urn:agent:web"),
+		Geo: &sessionproto.Geo{
+			CountryCode: "US",
+		},
+		Scopes:   []string{"read", "write"},
+		Features: []string{},
+	}
+}
+
+func TestGetSettings(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	t.Run("Valid request", func(t *testing.T) {
+		// Add a test setting to the mock service
+		testSetting := createTestSetting("")
+		mockService.EXPECT().GetSettings(ctx, gomock.Any(), gomock.Any()).Return([]prefsrepo.Setting{*testSetting}, nil)
+
+		// Create a valid request
+		req := &proto.GetSettingsRequest{
+			UserSession: createTestUserSession(),
+		}
+
+		// Call the API
+		resp, err := GetSettings(ctx, req)
+		// Verify response
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, len(resp.Settings), 1)
+		assert.Equal(t, testSetting.UserUrn, resp.Settings[0].UserUrn)
+		assert.Equal(t, testSetting.Name, resp.Settings[0].Name)
+	})
+
+	t.Run("Service error", func(t *testing.T) {
+		mockService.EXPECT().GetSettings(ctx, gomock.Any(), gomock.Any()).Return(nil, errors.New("error in repo"))
+		req := &proto.GetSettingsRequest{
+			UserSession: createTestUserSession(),
+		}
+
+		_, err := GetSettings(ctx, req)
+		assert.NotNil(t, err)
+	})
+}
+
+func TestGetPrivacySettings(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	t.Run("Valid request", func(t *testing.T) {
+		// Add a test setting to the mock service
+		testSetting := createTestSetting("")
+		expectedUserPrivacySettings := []prefsservice.UserPrivacySettings{
+			{
+				UserUrn:  testSetting.UserUrn,
+				Settings: []prefsrepo.Setting{*testSetting},
+			},
+		}
+		mockService.EXPECT().GetPrivacySettings(ctx, gomock.Any()).Return(expectedUserPrivacySettings, nil)
+
+		// Create a valid request
+		req := &proto.GetPrivacySettingsRequest{
+			UserSession: createTestUserSession(),
+			UserUrns:    []string{testSetting.UserUrn},
+		}
+
+		// Call the API
+		resp, err := GetPrivacySettings(ctx, req)
+		// Verify response
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, len(resp.Settings), 1)
+		userSettings := resp.Settings[0]
+		assert.Equal(t, len(userSettings.Settings), 1)
+		assert.Equal(t, testSetting.UserUrn, userSettings.Settings[0].UserUrn)
+		assert.Equal(t, testSetting.Name, userSettings.Settings[0].Name)
+	})
+
+	t.Run("Service error", func(t *testing.T) {
+		mockService.EXPECT().GetPrivacySettings(ctx, gomock.Any()).Return(nil, errors.New("error in repo"))
+		req := &proto.GetPrivacySettingsRequest{
+			UserSession: createTestUserSession(),
+			UserUrns:    []string{"userUrn"},
+		}
+
+		_, err := GetPrivacySettings(ctx, req)
+		assert.NotNil(t, err)
+	})
+}
+
+func TestPutSettings(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	t.Run("Valid request", func(t *testing.T) {
+		mockService.EXPECT().PutSetting(ctx, gomock.Any()).Return(nil)
+		// Create a valid request
+		session := createTestUserSession()
+		protoSetting := createTestProtoPutSetting()
+
+		req := &proto.PutSettingRequest{
+			UserSession: session,
+			Setting:     protoSetting,
+		}
+
+		// Call the API
+		resp, err := PutSetting(ctx, req)
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, resp.Setting.Name, protoSetting.Name)
+		assert.Equal(t, resp.Setting.Value, protoSetting.Value)
+		assert.Equal(t, resp.Setting.UserUrn, session.UserUrn.Value)
+	})
+
+	t.Run("Missing user_session", func(t *testing.T) {
+		// Create a request without user session
+		req := &proto.PutSettingRequest{
+			UserSession: nil,
+			Setting:     createTestProtoPutSetting(),
+		}
+
+		_, err := PutSetting(ctx, req)
+		assert.NotNil(t, err)
+
+		// Should be a Twirp InvalidArgument error
+		var twerr twirp.Error
+		ok := errors.As(err, &twerr)
+		assert.True(t, ok)
+		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+	})
+
+	t.Run("Missing setting Name", func(t *testing.T) {
+		// Create a request with missing setting ID
+		invalidSetting := createTestProtoPutSetting()
+		invalidSetting.Name = ""
+
+		req := &proto.PutSettingRequest{
+			UserSession: createTestUserSession(),
+			Setting:     invalidSetting,
+		}
+
+		_, err := PutSetting(ctx, req)
+		assert.NotNil(t, err)
+
+		// Should be a Twirp InvalidArgument error
+		var twerr twirp.Error
+		ok := errors.As(err, &twerr)
+		assert.True(t, ok)
+		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+	})
+
+	t.Run("Missing setting Value", func(t *testing.T) {
+		// Create a request with missing setting ID
+		invalidSetting := createTestProtoPutSetting()
+		invalidSetting.Value = ""
+
+		req := &proto.PutSettingRequest{
+			UserSession: createTestUserSession(),
+			Setting:     invalidSetting,
+		}
+
+		_, err := PutSetting(ctx, req)
+		assert.NotNil(t, err)
+
+		// Should be a Twirp InvalidArgument error
+		var twerr twirp.Error
+		ok := errors.As(err, &twerr)
+		assert.True(t, ok)
+		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+	})
+}
+
+func TestFetchUsersPrivacyAttributes(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockService := setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	const TestUserUrn = "userUrn"
+
+	t.Run("Valid request", func(t *testing.T) {
+		expectedAttributes := []domain.UserPrivacyAttributes{
+			{
+				UserUrn: TestUserUrn,
+				IsMinor: false,
+			},
+		}
+		mockService.EXPECT().FetchUsersPrivacyAttributes(ctx, gomock.Any()).Return(expectedAttributes, nil)
+		// Create a valid request
+		session := createTestUserSession()
+
+		req := &proto.UsersPrivacyAttributesRequest{
+			UserSession: session,
+			UserUrns:    []string{TestUserUrn},
+		}
+
+		// Call the API
+		resp, err := FetchUsersPrivacyAttributes(ctx, req)
+		assert.Nil(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, len(resp.PrivacyAttributes), 1)
+		assert.Equal(t, resp.PrivacyAttributes[0].UserUrn, TestUserUrn)
+		assert.False(t, resp.PrivacyAttributes[0].IsMinor)
+	})
+
+	t.Run("Service return error", func(t *testing.T) {
+		mockService.EXPECT().FetchUsersPrivacyAttributes(ctx, gomock.Any()).Return(nil, errors.New("service error"))
+		session := createTestUserSession()
+
+		req := &proto.UsersPrivacyAttributesRequest{
+			UserSession: session,
+			UserUrns:    []string{TestUserUrn},
+		}
+
+		// Call the API
+		resp, err := FetchUsersPrivacyAttributes(ctx, req)
+		assert.NotNil(t, err)
+		assert.Nil(t, resp)
+	})
+}

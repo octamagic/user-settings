@@ -1,0 +1,58 @@
+name: "[App] Build, Test & Deploy on Main"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'services/app/**'
+
+concurrency: ci-app-${{ github.ref }}-${{ github.event_name }}
+
+jobs:
+  build-and-test:
+    if: github.ref_name == 'main' && !contains(github.event.head_commit.message, 'skip ci')
+    uses: ./.github/workflows/app-build-test-common.yml
+    secrets: inherit
+    with:
+      ref: ${{ github.ref }}
+      commit: ${{ github.sha }}
+
+  deploy-development:
+    runs-on: [self-hosted, i-build-prod]
+    needs: build-and-test
+    timeout-minutes: 20
+    steps:
+      - name: Deploy to Development
+        env:
+          GH_TOKEN: ${{ secrets.SC_GITHUB_BOT_PAT }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments \
+          -f task=deploy:app \
+          -f ref=${{ github.sha }} \
+          -f environment=development \
+          -f description="Deploy api/worker to development" \
+          -F production_environment=false \
+          -F auto_merge=false \
+          -f required_contexts[]="build-and-test / docker-publish (user-settings, services/app/Dockerfile)"
+
+  deploy-staging:
+    runs-on: [self-hosted, i-build-prod]
+    needs: deploy-development
+    if: github.ref_name == 'main' && !contains(github.event.head_commit.message, 'skip ci')
+    timeout-minutes: 5
+    steps:
+      - name: Deploy to Staging
+        env:
+          GH_TOKEN: ${{ secrets.SC_GITHUB_BOT_PAT }}
+        shell: bash
+        run: |
+          gh api --method POST /repos/${{ github.repository }}/deployments \
+          -f task=deploy:app \
+          -f ref=${{ github.sha }} \
+          -f environment=staging \
+          -f description="Deploy api/worker to staging" \
+          -F production_environment=false \
+          -F auto_merge=false \
+          -f required_contexts[]="build-and-test / docker-publish (user-settings, services/app/Dockerfile)"

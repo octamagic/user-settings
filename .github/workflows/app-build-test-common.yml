@@ -1,0 +1,156 @@
+name: "[App] Build & Test"
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      commit:
+        required: true
+        type: string
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  test:
+    runs-on: [self-hosted, i-build-prod]
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        name: git checkout
+        with:
+          ref: ${{ inputs.ref }}
+      - name: setup github http auth
+        shell: bash
+        run: |
+          echo "https://sc-github-bot:${{ secrets.SC_GITHUB_BOT_PAT }}@github.com" > "${HOME}/.git-credentials"
+          git config --global credential.helper store
+      - uses: actions/setup-go@v5
+        name: setup go
+        with:
+          go-version-file: 'services/app/go.mod'
+          cache-dependency-path: 'services/app/go.sum'
+      - name: install protoc
+        uses: sc-actions-forks/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: install task
+        uses: sc-actions-forks/setup-task@main
+        with:
+          version: 3.41
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: install proto deps
+        shell: bash
+        run: task deps:proto
+      - name: gen rpc
+        shell: bash
+        run: task gen:rpc
+      - name: golangci-lint
+        uses: sc-actions-forks/golangci-lint-action@master
+        with:
+          args: --timeout=10m0s --exclude-dirs rpc
+          working-directory: services/app
+          skip-cache: true
+      - name: test
+        shell: bash
+        working-directory: services/app
+        run: task test:ci
+  docker-publish:
+    runs-on: [self-hosted, i-build-prod]
+    timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: user-settings
+            file: services/app/Dockerfile
+    env:
+      PLATFORM_PROFILE: "145582369311"
+      AWS_REGION: eu-central-1
+    steps:
+      - uses: actions/checkout@v4
+        name: git checkout
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-go@v5
+        name: setup go
+        with:
+          go-version-file: 'services/app/go.mod'
+          cache-dependency-path: 'services/app/go.sum'
+      - name: install protoc
+        uses: sc-actions-forks/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: install task
+        uses: sc-actions-forks/setup-task@main
+        with:
+          version: 3.36
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: install proto deps
+        shell: bash
+        run: task deps:proto
+      - name: gen rpc
+        shell: bash
+        run: task gen:rpc
+      - uses: soundcloud/sc-github-actions/docker-buildx-golang@docker-buildx-golang-v1.0.2
+        name: docker publish
+        with:
+          github_token: ${{ secrets.SC_GITHUB_BOT_PAT }}
+          commit: ${{ inputs.commit }}
+          aws_account_id: ${{ env.PLATFORM_PROFILE }}
+          aws_region: ${{ env.AWS_REGION }}
+          docker_registry: ${{ env.PLATFORM_PROFILE }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+          docker_image_name: ${{matrix.image_name}}
+          file: ${{matrix.file}}
+  plan:
+    runs-on: [self-hosted, i-build-prod]
+    timeout-minutes: 10
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - stage: production
+            profile: "062107869946"
+          - stage: staging
+            profile: "981069094484"
+          - stage: development
+            profile: "045673982243"
+    env:
+      PLATFORM_PROFILE: "145582369311"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: setup github http auth
+        shell: bash
+        run: |
+          echo "https://sc-github-bot:${{ secrets.SC_GITHUB_BOT_PAT }}@github.com" > "${HOME}/.git-credentials"
+          git config --global credential.helper store
+      - name: setup alerts credentials
+        uses: soundcloud/sc-github-actions/setup-tf-alert-permissions@setup-tf-alert-permissions-v2.0.0
+        with:
+          aws_profile: '${{ matrix.profile }}'
+      - uses: soundcloud/sc-github-actions/tf-plan@tf-plan-v1.9.5
+        name: tf plan
+        env:
+          TF_VAR_commit_sha: ${{ inputs.ref }}
+          TF_VAR_build_number: ${{ github.run_id }}
+        with:
+          terraform_version: "1.5.7"
+          working_directory: services/app/terraform
+          config_directory: config/${{ matrix.stage }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          aws_role: arn:aws:iam::${{ matrix.profile }}:role/automation-gha-read-only
+          aws_region: eu-central-1
+          comment_on_pr: false
+          init_arguments: '-reconfigure -backend-config="role_arn=arn:aws:iam::${{ env.PLATFORM_PROFILE }}:role/tf-state-reader-${{ matrix.profile }}"'

@@ -1,0 +1,118 @@
+version: '3'
+
+tasks:
+  ##############
+  # Repo tasks #
+  ##############
+  deps:macos:
+    cmds:
+      - brew install --quiet protobuf
+      - go install "github.com/air-verse/air@latest"
+      - go install "go.uber.org/mock/mockgen@latest"
+      - task: deps:proto
+
+  deps:proto:
+    env:
+      PROTOC_GEN_TWIRP_VERSION: latest
+      PROTOC_GEN_GO_VERSION: latest
+    cmds:
+      - go install "github.com/twitchtv/twirp/protoc-gen-twirp@${PROTOC_GEN_TWIRP_VERSION}"
+      - go install "google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}"
+
+  gen:docs:
+    cmds:
+      - rm -rf docs/user_settings_api.md
+      - docker run --platform=linux/amd64 --rm -v $(pwd)/docs:/out -v $(pwd)/rpc:/protos pseudomuto/protoc-gen-doc --doc_opt=markdown,user_settings_api.md
+
+  ###########################
+  # Working directory tasks #
+  ###########################
+  install:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: go get -t ./... && go mod tidy
+
+  upgrade:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: go get -u ./... && go mod tidy
+
+  docker:up:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: docker compose up -d --wait --wait-timeout 60
+
+  docker:down:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: docker compose down
+
+  lint:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmd: golangci-lint run
+
+  test:
+    dir: '{{.USER_WORKING_DIR}}'
+    dotenv: ['./config/.env.test']
+    cmd: go test -p 1 -timeout 60s $(go list ./... | grep -v -e /rpc -e /e2e -e /integration -e /testutils -e /dbutils)
+
+  test:coverage:
+    dir: '{{.USER_WORKING_DIR}}'
+    dotenv: ['./config/.env.test']
+    cmds:
+      - go test -p 1 -timeout 60s -coverprofile coverage.out $(go list ./... | grep -v -e /rpc -e /e2e -e /integration -e /testutils -e /dbutils)
+      - go tool cover -html coverage.out
+
+  test:integration:
+    dir: '{{.USER_WORKING_DIR}}'
+    dotenv: ['./config/.env.test']
+    cmd: go test -v -p 1 -timeout 60s ./tests/integration
+
+  test:e2e:
+    dir: '{{.USER_WORKING_DIR}}'
+    desc: Run end to end tests
+    dotenv: ['./config/.env.e2e']
+    cmd: go test -v -p 1 -timeout 60s ./tests/e2e
+
+  test:ci:
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - docker compose -f docker-compose.ci.yml up -d --quiet-pull --wait --wait-timeout 60
+      - task: test
+      - task: test:integration
+      - task: test:e2e
+      - docker compose -f docker-compose.ci.yml down --volumes --remove-orphans
+
+  #############
+  # App Tasks #
+  #############
+  gen:rpc:
+    sources: [services/app/rpc]
+    generates:
+      - internal/generated/user_settings_api.pb.go
+      - internal/generated/user_settings_api.twirp.go
+    cmds:
+      - rm -rf ./services/app/internal/generated && mkdir -p ./services/app/internal/generated
+      - protoc user_settings_api.proto --proto_path=./services/app/rpc --go_out=./services/app/internal/generated --twirp_out=./services/app/internal/generated
+
+  gen:mocks:
+    dir: ./services/app
+    cmds:
+      - mockgen -source=internal/prefsrepo/repository.go -destination=internal/prefsrepo/mock_repository.go -package=prefsrepo -self_package=github.com/soundcloud/user-settings/internal/prefsrepo
+      - mockgen -source=internal/prefsservice/service.go -destination=internal/prefsservice/mock_service.go -package=prefsservice -self_package=github.com/soundcloud/user-settings/internal/prefsservice
+      - mockgen -source=internal/prefsservice/domain/process_setting.go -destination=internal/prefsservice/domain/mock_process_setting.go -package=domain -self_package=github.com/soundcloud/user-settings/internal/prefsservice/domain
+      - mockgen -source=internal/prefsservice/domain/clock.go -destination=internal/prefsservice/domain/mock_clock.go -package=domain -self_package=github.com/soundcloud/user-settings/internal/prefsservice/domain
+      - mockgen -source=internal/regionalrulesrepo/repository.go -destination=internal/regionalrulesrepo/mock_repository.go -package=regionalrulesrepo -self_package=github.com/soundcloud/user-settings/internal/regionalrulesrepo
+      - mockgen -source=internal/rulesservice/service.go -destination=internal/rulesservice/mock_service.go -package=rulesservice -self_package=github.com/soundcloud/user-settings/internal/rulesservice
+      - mockgen -source=internal/prefsrepo/definitions/definitions.go -destination=internal/prefsrepo/definitions/mock_definitions.go -package=definitions -self_package=github.com/soundcloud/user-settings/internal/prefsrepo/definitions
+  #      - mockgen -source=pkg/dynamodb/dynamodb.go -destination=pkg/dynamodb/mock_dynamodb.go -package=db -self_package=github.com/soundcloud/user-settings/app/pkg/dynamodb
+  
+  build:
+    deps: [gen:rpc]
+    dir: ./services/app/cmd/api
+    cmds:
+      - rm -f ../../bin/user-settings-api
+      - CGO_ENABLED=0 GOOS=${GOOS:-darwin} go build -v -o ../../bin/user-settings-api
+
+  dev:
+    deps:
+      - docker:up
+    dir: '{{.USER_WORKING_DIR}}'
+    dotenv: ['./config/.env.local']
+    cmd: air -c cmd/api/.air.toml

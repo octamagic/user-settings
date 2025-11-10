@@ -1,0 +1,29 @@
+services:
+  dynamodb-local-ci:
+    image: "amazon/dynamodb-local:latest"
+    command: "-jar DynamoDBLocal.jar -inMemory -port 9000"
+    ports:
+      - "9000:9000"
+    environment:
+      - ENDPOINT_URL=http://dynamodb-local-ci:9000
+    networks:
+      - user-settings-ci
+  dynamodb-setup-ci:
+    image: amazon/aws-cli
+    ports:
+      - "9001:9001"
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - ENDPOINT_URL=http://dynamodb-local-ci:9000
+    entrypoint: ["/dynamodb-setup-entrypoint.sh"]
+    command: dynamodb list-tables --endpoint-url http://dynamodb-local-ci:9000 --region eu-central-1
+    depends_on:
+      - dynamodb-local-ci
+    volumes:
+      - "./docker/dynamodb/setup-entrypoint.sh:/dynamodb-setup-entrypoint.sh"
+    networks:
+      - user-settings-ci
+
+networks:
+  user-settings-ci:
