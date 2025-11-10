@@ -48,7 +48,7 @@ jobs:
       contents: read # This is required for checking stuff out
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: checkout
       - uses: soundcloud/sc-github-actions/artillery@master
         name: artillery
