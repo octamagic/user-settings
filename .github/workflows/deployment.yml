@@ -43,7 +43,7 @@ jobs:
       TERRAFORM_VERSION: "1.5.7"
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.event.deployment.ref }}
       - name: setup github http auth

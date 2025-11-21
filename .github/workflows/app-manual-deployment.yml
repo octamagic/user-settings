@@ -43,7 +43,7 @@ jobs:
     if: contains(fromJSON('["production","staging","development"]'), github.event.inputs.environment )
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         name: validate ref existence
         with:
           fetch-depth: 0
