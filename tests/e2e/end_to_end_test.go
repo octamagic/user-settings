@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/tests/dbutils"
+	"github.com/octamagic/user-settings/tests/dbutils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	testcontainers_wiremock "github.com/wiremock/wiremock-testcontainers-go"

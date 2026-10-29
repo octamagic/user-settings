@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
-	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
+	"github.com/octamagic/user-settings/internal/prefsrepo"
+	"github.com/octamagic/user-settings/internal/prefsrepo/definitions"
+	"github.com/octamagic/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

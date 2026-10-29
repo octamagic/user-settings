@@ -7,8 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	usersettingsv1 "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/logging"
+	usersettingsv1 "github.com/octamagic/user-settings/internal/generated/usersettings/v1"
+	"github.com/octamagic/user-settings/internal/logging"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 

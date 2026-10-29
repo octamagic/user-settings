@@ -1,5 +1,5 @@
 # Everything the user-settings service needs in one AWS account and region,
-# composed from github.com/patrickisgreat/tf-tools modules. Each environment root
+# composed from github.com/octamagic/tf-tools modules. Each environment root
 # under ../../environments instantiates this once.
 #
 # Module sources are pinned to a tf-tools release tag. Bump every ref together.
@@ -50,7 +50,7 @@ data "aws_region" "current" {}
 # ── image registry ─────────────────────────────────────────────────────────
 
 module "ecr" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/ecr?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/ecr?ref=v0.3.0"
 
   name = var.name
   tags = local.tags
@@ -60,7 +60,7 @@ module "ecr" {
 
 # One table: pk = user URN, sk = setting name. See docs/architecture.md.
 module "table" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/dynamodb-table?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/dynamodb-table?ref=v0.3.0"
 
   name      = local.prefix
   hash_key  = { name = "pk", type = "S" }
@@ -80,14 +80,14 @@ resource "aws_cloudwatch_log_group" "this" {
 }
 
 module "cluster" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/ecs-cluster?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/ecs-cluster?ref=v0.3.0"
 
   name = local.prefix
   tags = local.tags
 }
 
 module "alb" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/alb?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/alb?ref=v0.3.0"
 
   name       = local.prefix
   vpc_id     = var.vpc_id
@@ -128,7 +128,7 @@ resource "aws_vpc_security_group_egress_rule" "all" {
 }
 
 module "execution_role" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
 
   name                  = "${local.prefix}-execution"
   description           = "Pulls the image and writes logs for ${local.prefix}."
@@ -153,7 +153,7 @@ data "aws_iam_policy_document" "task" {
 }
 
 module "task_role" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
 
   name                  = "${local.prefix}-task"
   description           = "Runtime permissions for ${local.prefix}: the settings table only."
@@ -186,7 +186,7 @@ locals {
 }
 
 module "service" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/ecs-service?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/ecs-service?ref=v0.3.0"
 
   name        = local.prefix
   cluster_arn = module.cluster.arn
@@ -217,7 +217,7 @@ module "service" {
 }
 
 module "autoscaling" {
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/ecs-autoscaling?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/ecs-autoscaling?ref=v0.3.0"
 
   cluster_name = module.cluster.name
   service_name = module.service.service_name
@@ -301,7 +301,7 @@ data "aws_iam_policy_document" "ci_deploy" {
 
 module "ci_role" {
   count  = local.create_ci_role ? 1 : 0
-  source = "git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
+  source = "git::https://github.com/octamagic/tf-tools.git//modules/aws/iam-role?ref=v0.3.0"
 
   name               = "${local.prefix}-github-deploy"
   description        = "Assumed by GitHub Actions in ${var.github_repository} to push images and roll ${local.prefix}."

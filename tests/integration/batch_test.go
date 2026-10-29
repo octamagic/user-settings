@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
+	"github.com/octamagic/user-settings/internal/prefsrepo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

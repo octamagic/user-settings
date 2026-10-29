@@ -25,14 +25,14 @@ permissions:
 
 jobs:
   checks:
-    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-ci.yml@v0
+    uses: octamagic/actions-toolkit/.github/workflows/terraform-ci.yml@v0
     with:
       directories: terraform
       docs-check: false
 
   plan:
     if: github.event_name == 'pull_request' && vars.AWS_TERRAFORM_ROLE_ARN != ''
-    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
+    uses: octamagic/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
     with:
       mode: plan
       # Every environment, always: a change to terraform/modules/service affects all
@@ -53,7 +53,7 @@ jobs:
 
   apply:
     if: github.event_name == 'push' && vars.AWS_TERRAFORM_ROLE_ARN != ''
-    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
+    uses: octamagic/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
     with:
       mode: both
       directories: '["terraform/environments/dev","terraform/environments/staging","terraform/environments/production"]'

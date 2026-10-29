@@ -12,7 +12,7 @@ package rulesservice
 import (
 	reflect "reflect"
 
-	regionalrulesrepo "github.com/patrickisgreat/user-settings/internal/regionalrulesrepo"
+	regionalrulesrepo "github.com/octamagic/user-settings/internal/regionalrulesrepo"
 	gomock "go.uber.org/mock/gomock"
 )
 

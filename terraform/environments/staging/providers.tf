@@ -7,7 +7,7 @@ provider "aws" {
         Service     = "user-settings"
         Environment = "staging"
         ManagedBy   = "terraform"
-        Repo        = "github.com/patrickisgreat/user-settings"
+        Repo        = "github.com/octamagic/user-settings"
       },
       var.default_tags,
     )

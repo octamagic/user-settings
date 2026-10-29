@@ -4,7 +4,7 @@ package usersettings.common.v1;
 
 import "google/protobuf/wrappers.proto";
 
-option go_package = "github.com/patrickisgreat/user-settings/internal/generated/common/v1;commonv1";
+option go_package = "github.com/octamagic/user-settings/internal/generated/common/v1;commonv1";
 
 // Geo is the geographic location of the caller, determined from IP geolocation.
 message Geo {

@@ -7,13 +7,12 @@
 package commonv1
 
 import (
-	reflect "reflect"
-	sync "sync"
-	unsafe "unsafe"
-
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
+	reflect "reflect"
+	sync "sync"
+	unsafe "unsafe"
 )
 
 const (
@@ -181,7 +180,7 @@ const file_session_proto_rawDesc = "" +
 	"\tagent_urn\x18\x02 \x01(\v2\x1c.google.protobuf.StringValueR\bagentUrn\x12-\n" +
 	"\x03geo\x18\x03 \x01(\v2\x1b.usersettings.common.v1.GeoR\x03geo\x12\x16\n" +
 	"\x06scopes\x18\x04 \x03(\tR\x06scopes\x12\x1a\n" +
-	"\bfeatures\x18\x05 \x03(\tR\bfeaturesBOZMgithub.com/patrickisgreat/user-settings/internal/generated/common/v1;commonv1b\x06proto3"
+	"\bfeatures\x18\x05 \x03(\tR\bfeaturesBJZHgithub.com/octamagic/user-settings/internal/generated/common/v1;commonv1b\x06proto3"
 
 var (
 	file_session_proto_rawDescOnce sync.Once

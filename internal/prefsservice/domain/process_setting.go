@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/logging"
-	"github.com/patrickisgreat/user-settings/internal/rulesservice"
-	"github.com/patrickisgreat/user-settings/internal/userdirectory"
+	"github.com/octamagic/user-settings/internal/logging"
+	"github.com/octamagic/user-settings/internal/rulesservice"
+	"github.com/octamagic/user-settings/internal/userdirectory"
 )
 
 type UserDirectory interface {

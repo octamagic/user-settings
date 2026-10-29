@@ -3,7 +3,7 @@ package e2e
 import (
 	"testing"
 
-	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	proto "github.com/octamagic/user-settings/internal/generated/usersettings/v1"
 	"github.com/stretchr/testify/assert"
 )
 

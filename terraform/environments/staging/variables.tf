@@ -45,7 +45,7 @@ variable "image_tag" {
 variable "github_repository" {
   description = "owner/repo allowed to assume the deploy role. null skips the role."
   type        = string
-  default     = "patrickisgreat/user-settings"
+  default     = "octamagic/user-settings"
 }
 
 variable "default_tags" {

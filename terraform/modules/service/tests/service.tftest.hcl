@@ -71,7 +71,7 @@ run "github_repository_creates_a_scoped_oidc_role" {
   command = plan
 
   variables {
-    github_repository = "patrickisgreat/user-settings"
+    github_repository = "octamagic/user-settings"
   }
 
   assert {
@@ -82,7 +82,7 @@ run "github_repository_creates_a_scoped_oidc_role" {
   assert {
     condition = contains(
       jsondecode(local.ci_trust_policy).Statement[0].Condition.StringLike["token.actions.githubusercontent.com:sub"],
-      "repo:patrickisgreat/user-settings:ref:refs/heads/main",
+      "repo:octamagic/user-settings:ref:refs/heads/main",
     )
     error_message = "The trust policy must be scoped to this repository's main branch and environments, never to repo:*."
   }

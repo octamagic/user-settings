@@ -3,7 +3,7 @@
 Terraform for running the service on AWS: ECR, a DynamoDB table, an ECS Fargate
 service behind an internal ALB with CPU autoscaling, CloudWatch logs, and a GitHub
 OIDC role the deploy workflow assumes. Everything is composed from modules in
-[tf-tools](https://github.com/patrickisgreat/tf-tools), pinned to a release tag.
+[tf-tools](https://github.com/octamagic/tf-tools), pinned to a release tag.
 
 ```
 terraform/

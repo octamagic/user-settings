@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/rulesservice"
-	"github.com/patrickisgreat/user-settings/internal/userdirectory"
+	"github.com/octamagic/user-settings/internal/rulesservice"
+	"github.com/octamagic/user-settings/internal/userdirectory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"

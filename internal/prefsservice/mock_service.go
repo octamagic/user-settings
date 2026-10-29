@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	prefsrepo "github.com/patrickisgreat/user-settings/internal/prefsrepo"
-	domain "github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
+	prefsrepo "github.com/octamagic/user-settings/internal/prefsrepo"
+	domain "github.com/octamagic/user-settings/internal/prefsservice/domain"
 	gomock "go.uber.org/mock/gomock"
 )
 

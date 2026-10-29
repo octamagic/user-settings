@@ -124,7 +124,7 @@ make tf-test            # validate every root + terraform test, against ~/code/t
 
 ## CI, and the variables it needs
 
-Workflows call [actions-toolkit](https://github.com/patrickisgreat/actions-toolkit)
+Workflows call [actions-toolkit](https://github.com/octamagic/actions-toolkit)
 reusable workflows pinned to `@v0`. Credentialed jobs skip until these exist:
 
 | repository variable | used by | value |

@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	commonv1 "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
-	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/mappers"
-	"github.com/patrickisgreat/user-settings/internal/prefsservice"
+	commonv1 "github.com/octamagic/user-settings/internal/generated/common/v1"
+	proto "github.com/octamagic/user-settings/internal/generated/usersettings/v1"
+	"github.com/octamagic/user-settings/internal/mappers"
+	"github.com/octamagic/user-settings/internal/prefsservice"
 	"github.com/twitchtv/twirp"
 )
 

@@ -28,7 +28,7 @@ from the code.
    secrets, in code, Terraform, workflows or fixtures. The original import leaked an
    infrastructure inventory; that is the failure mode to watch for.
 8. **Terraform consumes tf-tools; it does not fork it.** Missing capability goes into
-   `github.com/patrickisgreat/tf-tools` as a module or an additive flag, then gets
+   `github.com/octamagic/tf-tools` as a module or an additive flag, then gets
    pinned here. Every `?ref=` moves together.
 
 ## Commands you cannot guess
@@ -83,7 +83,7 @@ scripts/tf-local.sh       # what tf-test runs; prints the temp dir it worked in
   AWS provider rejects random strings where it validates ARN shapes. Keep assertable
   data in `locals` (`local.environment`, `local.container`, `local.ci_trust_policy`).
 - **Workflows are composed, not copied.** `.github/workflows/*` call
-  `patrickisgreat/actions-toolkit` reusable workflows pinned to `@v0` (there is no
+  `octamagic/actions-toolkit` reusable workflows pinned to `@v0` (there is no
   `v1` tag yet, whatever the toolkit's docs say). Credentialed jobs gate on
   repository variables so a fresh clone stays green.
 - **Git.** Feature branches only; conventional commit prefixes (`feat`, `fix`,

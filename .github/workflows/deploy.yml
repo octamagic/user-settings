@@ -69,7 +69,7 @@ jobs:
     name: Build and push image
     needs: resolve
     if: needs.resolve.outputs.role_arn != ''
-    uses: patrickisgreat/actions-toolkit/.github/workflows/docker-build.yml@v0
+    uses: octamagic/actions-toolkit/.github/workflows/docker-build.yml@v0
     with:
       registry: ecr
       registry-host: ${{ needs.resolve.outputs.registry_host }}
@@ -85,7 +85,7 @@ jobs:
   deploy:
     name: Roll ECS service
     needs: [resolve, image]
-    uses: patrickisgreat/actions-toolkit/.github/workflows/deploy-aws.yml@v0
+    uses: octamagic/actions-toolkit/.github/workflows/deploy-aws.yml@v0
     with:
       target: ecs
       aws-region: ${{ vars.AWS_REGION }}

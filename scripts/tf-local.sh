@@ -15,7 +15,7 @@ TF_TOOLS_DIR="${TF_TOOLS_DIR:-$HOME/code/tf-tools}"
 work="$(mktemp -d)"
 cp -R terraform "$work/"
 find "$work/terraform" -name '*.tf' -exec sed -i.bak -E \
-  "s#git::https://github.com/patrickisgreat/tf-tools.git//modules/aws/([a-z-]+)\?ref=[^\"]+#${TF_TOOLS_DIR}/modules/aws/\1#g" {} +
+  "s#git::https://github.com/octamagic/tf-tools.git//modules/aws/([a-z-]+)\?ref=[^\"]+#${TF_TOOLS_DIR}/modules/aws/\1#g" {} +
 find "$work/terraform" -name '*.bak' -delete
 
 for dir in "$work"/terraform/modules/service "$work"/terraform/environments/*; do

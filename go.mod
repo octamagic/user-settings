@@ -1,4 +1,4 @@
-module github.com/patrickisgreat/user-settings
+module github.com/octamagic/user-settings
 
 go 1.24.1
 

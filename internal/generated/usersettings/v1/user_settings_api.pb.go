@@ -7,13 +7,12 @@
 package usersettingsv1
 
 import (
+	v1 "github.com/octamagic/user-settings/internal/generated/common/v1"
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	v1 "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -750,7 +749,7 @@ const file_user_settings_api_proto_rawDesc = "" +
 	"\x12GetPrivacySettings\x12*.usersettings.v1.GetPrivacySettingsRequest\x1a+.usersettings.v1.GetPrivacySettingsResponse\"\x00\x12W\n" +
 	"\n" +
 	"PutSetting\x12\".usersettings.v1.PutSettingRequest\x1a#.usersettings.v1.PutSettingResponse\"\x00\x12\x80\x01\n" +
-	"\x1bFetchUsersPrivacyAttributes\x12..usersettings.v1.UsersPrivacyAttributesRequest\x1a/.usersettings.v1.UsersPrivacyAttributesResponse\"\x00B[ZYgithub.com/patrickisgreat/user-settings/internal/generated/usersettings/v1;usersettingsv1b\x06proto3"
+	"\x1bFetchUsersPrivacyAttributes\x12..usersettings.v1.UsersPrivacyAttributesRequest\x1a/.usersettings.v1.UsersPrivacyAttributesResponse\"\x00BVZTgithub.com/octamagic/user-settings/internal/generated/usersettings/v1;usersettingsv1b\x06proto3"
 
 var (
 	file_user_settings_api_proto_rawDescOnce sync.Once

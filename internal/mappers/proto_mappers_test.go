@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
-	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
+	proto "github.com/octamagic/user-settings/internal/generated/usersettings/v1"
+	"github.com/octamagic/user-settings/internal/prefsrepo"
+	"github.com/octamagic/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

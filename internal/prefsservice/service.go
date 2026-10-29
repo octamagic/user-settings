@@ -10,10 +10,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/logging"
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
-	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
-	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
+	"github.com/octamagic/user-settings/internal/logging"
+	"github.com/octamagic/user-settings/internal/prefsrepo"
+	"github.com/octamagic/user-settings/internal/prefsrepo/definitions"
+	"github.com/octamagic/user-settings/internal/prefsservice/domain"
 	"golang.org/x/sync/errgroup"
 )
 

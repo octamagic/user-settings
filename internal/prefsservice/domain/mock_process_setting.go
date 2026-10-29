@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 
-	rulesservice "github.com/patrickisgreat/user-settings/internal/rulesservice"
-	userdirectory "github.com/patrickisgreat/user-settings/internal/userdirectory"
+	rulesservice "github.com/octamagic/user-settings/internal/rulesservice"
+	userdirectory "github.com/octamagic/user-settings/internal/userdirectory"
 	gomock "go.uber.org/mock/gomock"
 )
 

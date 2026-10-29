@@ -95,10 +95,10 @@ tests/e2e/               black-box tests with testcontainers
 
 `terraform/` runs the service on AWS (ECS Fargate behind an internal ALB, DynamoDB,
 ECR, CloudWatch, autoscaling, a GitHub OIDC deploy role) and is composed entirely
-from [tf-tools](https://github.com/patrickisgreat/tf-tools) modules; the two pieces
+from [tf-tools](https://github.com/octamagic/tf-tools) modules; the two pieces
 it needed that the library lacked were contributed back rather than copied in. The
 GitHub workflows are assembled from
-[actions-toolkit](https://github.com/patrickisgreat/actions-toolkit) reusable
+[actions-toolkit](https://github.com/octamagic/actions-toolkit) reusable
 workflows: Go CI, image build and scan, Terraform plan-on-PR / apply-on-merge, and an
 OIDC-authenticated ECS deploy. Details in [terraform/README.md](terraform/README.md).
 

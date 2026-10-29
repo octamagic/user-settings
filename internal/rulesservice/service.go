@@ -2,7 +2,7 @@
 package rulesservice
 
 import (
-	"github.com/patrickisgreat/user-settings/internal/regionalrulesrepo"
+	"github.com/octamagic/user-settings/internal/regionalrulesrepo"
 )
 
 type RuleApplication int

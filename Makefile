@@ -1,4 +1,4 @@
-MODULE      := github.com/patrickisgreat/user-settings
+MODULE      := github.com/octamagic/user-settings
 GENERATED   := internal/generated
 UNIT_PKGS   := $(shell go list ./... | grep -v -e /generated -e /tests/)
 

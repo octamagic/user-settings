@@ -4,7 +4,7 @@ package usersettings.v1;
 
 import "session.proto";
 
-option go_package = "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1;usersettingsv1";
+option go_package = "github.com/octamagic/user-settings/internal/generated/usersettings/v1;usersettingsv1";
 
 enum SettingType {
   STRING = 0;

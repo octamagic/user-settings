@@ -10,10 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/app"
-	"github.com/patrickisgreat/user-settings/internal/config"
-	"github.com/patrickisgreat/user-settings/internal/httpserver"
-	"github.com/patrickisgreat/user-settings/internal/logging"
+	"github.com/octamagic/user-settings/internal/app"
+	"github.com/octamagic/user-settings/internal/config"
+	"github.com/octamagic/user-settings/internal/httpserver"
+	"github.com/octamagic/user-settings/internal/logging"
 )
 
 const shutdownTimeout = 10 * time.Second
