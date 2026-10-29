@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	ex "github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	db "github.com/patrickisgreat/user-settings/pkg/dynamodb"
 )
 
 type SettingsRepository interface {
@@ -17,15 +16,16 @@ type SettingsRepository interface {
 	GetSettings(ctx context.Context, userUrn string, names []string) ([]Setting, error)
 }
 
-// SettingsRepository implements basic CRUD for user settings.
+// settingsRepository stores settings in a single DynamoDB table keyed by
+// user URN (pk) and setting name (sk).
 type settingsRepository struct {
-	db.DynamoDBRepository
+	db        *dynamodb.Client
+	tableName string
 }
 
 // NewSettingsRepository creates a new SettingsRepository given a DynamoDB client and table name.
 func NewSettingsRepository(dynamo *dynamodb.Client, tableName string) SettingsRepository {
-	repo := db.NewDynamoDBRepository(tableName, dynamo)
-	return &settingsRepository{DynamoDBRepository: *repo}
+	return &settingsRepository{db: dynamo, tableName: tableName}
 }
 
 func (sr *settingsRepository) PutSetting(ctx context.Context, setting Setting) error {
@@ -33,8 +33,8 @@ func (sr *settingsRepository) PutSetting(ctx context.Context, setting Setting) e
 	if err != nil {
 		return err
 	}
-	_, err = sr.DB.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(*sr.TableName),
+	_, err = sr.db.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(sr.tableName),
 		Item:      item,
 	})
 	return err
@@ -50,13 +50,13 @@ func (sr *settingsRepository) GetSettings(ctx context.Context, userUrn string, n
 	}
 
 	queryInput := &dynamodb.QueryInput{
-		TableName:                 aws.String(*sr.TableName),
+		TableName:                 aws.String(sr.tableName),
 		KeyConditionExpression:    expr.KeyCondition(),
 		ExpressionAttributeNames:  expr.Names(),
 		ExpressionAttributeValues: expr.Values(),
 	}
 
-	res, err := sr.DB.Query(ctx, queryInput)
+	res, err := sr.db.Query(ctx, queryInput)
 	if err != nil {
 		return nil, err
 	}

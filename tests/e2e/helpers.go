@@ -3,92 +3,63 @@ package e2e
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
-	"net"
+	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/bakins/twirpotel"
-	"github.com/patrickisgreat/user-settings/internal/api"
-	"github.com/patrickisgreat/user-settings/internal/appserver"
+	"github.com/patrickisgreat/user-settings/internal/app"
 	"github.com/patrickisgreat/user-settings/internal/config"
-	common "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
-	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/handlers"
-	"github.com/patrickisgreat/user-settings/internal/logging"
-	"github.com/patrickisgreat/user-settings/internal/mappers"
-	"github.com/stretchr/testify/assert"
-	"github.com/twitchtv/twirp"
+	commonv1 "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
+	usersettingsv1 "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
-	pbproto "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-var httpClient = &http.Client{}
+// testServer is the application under test, served on an ephemeral port.
+var testServer *httptest.Server
 
-func startServer() context.CancelFunc {
-	ctx, cancel := context.WithCancel(context.Background())
-	appserver.InitContext(ctx)
-	api.InitService(appserver.Context().UserSettingsService, mappers.ProtoMapper{})
-	ras := proto.NewUserSettingsServiceServer(
-		&handlers.UserSettingsService{},
-		twirp.WithServerInterceptors(twirpotel.ServerInterceptor()),
-	)
-	router := appserver.NewRouter(&ras, logging.New(config.Config.LogLevel, config.Config.LogPretty))
-	addr := net.JoinHostPort(config.Config.Host, fmt.Sprintf("%d", config.Config.Port))
-	go appserver.Start(ctx, &appserver.StartParams{
-		Router: router,
-		Addr:   addr,
-	})
-	return cancel
+// startServer builds the app from the environment and serves it in-process.
+func startServer(ctx context.Context) (*app.App, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, err
+	}
+	service, err := app.New(ctx, cfg, slog.New(slog.DiscardHandler))
+	if err != nil {
+		return nil, err
+	}
+	testServer = httptest.NewServer(service.Handler)
+	return service, nil
 }
 
-func sendRequest(t *testing.T, method string, reqBody pbproto.Message) *http.Response {
-	baseURL := fmt.Sprintf("http://%s:%d/twirp/usersettings.v1.", config.Config.Host, config.Config.Port)
+func sendRequest(t *testing.T, method string, reqBody proto.Message) *http.Response {
+	t.Helper()
 	reqBytes, err := protojson.Marshal(reqBody)
-	if err != nil {
-		t.Fatalf("Failed to marshal request body: %v", err)
-	}
-	fmt.Println("Request Body:", string(reqBytes))
+	require.NoError(t, err, "marshal request body")
 
-	req, err := http.NewRequest("POST", baseURL+method, bytes.NewBuffer(reqBytes))
-	if err != nil {
-		t.Fatalf("Failed to create request: %v", err)
-	}
-
+	url := testServer.URL + usersettingsv1.UserSettingsServicePathPrefix + method
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(reqBytes))
+	require.NoError(t, err, "create request")
 	req.Header.Set("Content-Type", "application/json")
-	res, err := httpClient.Do(req)
-	if err != nil {
-		t.Fatalf("Failed to send request: %v", err)
-	}
 
+	res, err := testServer.Client().Do(req)
+	require.NoError(t, err, "send request")
+	t.Cleanup(func() { _ = res.Body.Close() })
 	return res
 }
 
-func decodeSuccessResponse(t *testing.T, res *http.Response, resBody pbproto.Message) pbproto.Message {
-	assert.Equal(t, 200, res.StatusCode)
+func decodeSuccessResponse(t *testing.T, res *http.Response, resBody proto.Message) {
+	t.Helper()
 	bodyBytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		t.Fatalf("Failed to read response body: %v", err)
-	}
-	fmt.Println("Response Body:", string(bodyBytes))
-
-	if err := protojson.Unmarshal(bodyBytes, resBody); err != nil {
-		t.Fatalf("Failed to unmarshal response: %v", err)
-	}
-	return resBody
+	require.NoError(t, err, "read response body")
+	require.Equal(t, http.StatusOK, res.StatusCode, "unexpected status, body: %s", bodyBytes)
+	require.NoError(t, protojson.Unmarshal(bodyBytes, resBody), "unmarshal response")
 }
 
-//func decodeErrorResponse(t *testing.T, res *http.Response) string {
-//	bodyBytes, err := io.ReadAll(res.Body)
-//	if err != nil {
-//		t.Fatalf("Failed to read response body: %v", err)
-//	}
-//	fmt.Println("Response Body:", string(bodyBytes))
-//	return string(bodyBytes)
-//}
-
-func userSession(userUrn string) *common.UserSession {
-	return &common.UserSession{UserUrn: &wrapperspb.StringValue{Value: userUrn}}
+func userSession(userUrn string) *commonv1.UserSession {
+	return &commonv1.UserSession{UserUrn: &wrapperspb.StringValue{Value: userUrn}}
 }

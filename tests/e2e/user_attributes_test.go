@@ -11,7 +11,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	userUrn := "urn:user:2"
 
 	t.Run("returns valid response for user", func(t *testing.T) {
-		res := sendRequest(t, "UserSettingsService/FetchUsersPrivacyAttributes", &proto.UsersPrivacyAttributesRequest{
+		res := sendRequest(t, "FetchUsersPrivacyAttributes", &proto.UsersPrivacyAttributesRequest{
 			UserSession: userSession(userUrn),
 			UserUrns:    []string{userUrn},
 		})

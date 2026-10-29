@@ -1,95 +1,95 @@
+// Package e2e exercises the service over HTTP against DynamoDB Local and a
+// WireMock stand-in for the user directory, both started via testcontainers.
 package e2e
 
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/logging"
 	"github.com/patrickisgreat/user-settings/tests/dbutils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"github.com/wiremock/wiremock-testcontainers-go" //nolint:goimports
+	testcontainers_wiremock "github.com/wiremock/wiremock-testcontainers-go"
 )
 
 func TestMain(m *testing.M) {
-	ctx := context.Background()
-
-	dynamodb := setupDynamoDBInTestcontainers(ctx)
-	userDirectory := setupWiremockContainer(ctx)
-
-	defer func() {
-		if err := testcontainers.TerminateContainer(dynamodb); err != nil {
-			fmt.Printf("Error terminating DynamoDB container: %v\n", err)
-		}
-		if err := testcontainers.TerminateContainer(userDirectory); err != nil {
-			fmt.Printf("Error terminating user directory container: %v\n", err)
-		}
-	}()
-
-	cancel := startServer()
-	createTestTables(ctx)
-
-	exitCode := m.Run()
-
-	cancel()
-	os.Exit(exitCode)
+	code, err := runSuite(m)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "e2e setup failed:", err)
+		code = 1
+	}
+	os.Exit(code)
 }
 
-func setupWiremockContainer(ctx context.Context) testcontainers.Container {
-	wiremockContainer, _ := testcontainers_wiremock.RunContainer(ctx,
+func runSuite(m *testing.M) (int, error) {
+	ctx := context.Background()
+
+	dynamo, err := startDynamoDB(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer terminate(dynamo, "dynamodb")
+
+	directory, err := startUserDirectory(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer terminate(directory, "user directory")
+
+	service, err := startServer(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer testServer.Close()
+	defer func() { _ = service.Shutdown(ctx) }()
+
+	if err := dbutils.CreateSettingsTable(ctx, service.DynamoDB, service.Config.UserSettingsTableName); err != nil {
+		return 0, err
+	}
+
+	return m.Run(), nil
+}
+
+func startUserDirectory(ctx context.Context) (testcontainers.Container, error) {
+	container, err := testcontainers_wiremock.RunContainer(ctx,
 		testcontainers_wiremock.WithMappingFile("userdirectory", filepath.Join("wiremock", "userdirectory_mappings.json")),
 		testcontainers_wiremock.WithFile("user2.json", filepath.Join("wiremock", "user2.json")),
 	)
-
-	endpoint, endpointErr := wiremockContainer.Endpoint(ctx, "")
-	if endpointErr != nil {
-		fmt.Println("Error getting endpoint:", endpointErr)
-		os.Exit(1)
+	if err != nil {
+		return nil, fmt.Errorf("starting wiremock: %w", err)
 	}
-
-	userDirectoryEndpoint := fmt.Sprintf("http://%s", endpoint)
-	fmt.Println("user directory base URL: ", userDirectoryEndpoint)
-	if err := os.Setenv("USER_DIRECTORY_BASE_URL", userDirectoryEndpoint); err != nil {
-		fmt.Println("Error setting USER_DIRECTORY_BASE_URL environment variable:", err)
-		os.Exit(1)
+	endpoint, err := container.Endpoint(ctx, "http")
+	if err != nil {
+		return nil, fmt.Errorf("resolving wiremock endpoint: %w", err)
 	}
-
-	return wiremockContainer
+	return container, os.Setenv("USER_DIRECTORY_BASE_URL", endpoint)
 }
 
-func setupDynamoDBInTestcontainers(ctx context.Context) testcontainers.Container {
-	req := testcontainers.ContainerRequest{
-		Image:        "amazon/dynamodb-local:latest",
-		ExposedPorts: []string{"8000"},
-		WaitingFor:   wait.ForExposedPort().WithPollInterval(100 * time.Millisecond).WithStartupTimeout(60 * time.Second),
-	}
-	dynamodb, _ := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: req,
-		Started:          true,
+func startDynamoDB(ctx context.Context) (testcontainers.Container, error) {
+	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: testcontainers.ContainerRequest{
+			Image:        "amazon/dynamodb-local:latest",
+			ExposedPorts: []string{"8000"},
+			WaitingFor:   wait.ForExposedPort().WithPollInterval(100 * time.Millisecond).WithStartupTimeout(60 * time.Second),
+		},
+		Started: true,
 	})
-	endpoint, endpointErr := dynamodb.Endpoint(ctx, "")
-	if endpointErr != nil {
-		fmt.Println("Error getting endpoint:", endpointErr)
-		os.Exit(1)
+	if err != nil {
+		return nil, fmt.Errorf("starting dynamodb local: %w", err)
 	}
-
-	dynamodbEndpoint := fmt.Sprintf("http://%s", endpoint)
-	if err := os.Setenv("DYNAMODB_ENDPOINT", dynamodbEndpoint); err != nil {
-		fmt.Println("Error setting DYNAMODB_ENDPOINT environment variable:", err)
-		os.Exit(1)
+	endpoint, err := container.Endpoint(ctx, "http")
+	if err != nil {
+		return nil, fmt.Errorf("resolving dynamodb endpoint: %w", err)
 	}
-
-	return dynamodb
+	return container, os.Setenv("DYNAMODB_ENDPOINT", endpoint)
 }
 
-func createTestTables(ctx context.Context) {
-	if err := dbutils.CreateTables(); err != nil {
-		logging.FromContext(ctx).Error("Error creating database:", slog.Any("err", err))
-		os.Exit(1)
+func terminate(container testcontainers.Container, name string) {
+	if err := testcontainers.TerminateContainer(container); err != nil {
+		fmt.Fprintf(os.Stderr, "error terminating %s container: %v\n", name, err)
 	}
 }

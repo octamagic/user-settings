@@ -8,6 +8,6 @@ type Clock interface {
 }
 type DefaultClock struct{}
 
-func (c *DefaultClock) Now() time.Time {
+func (c DefaultClock) Now() time.Time {
 	return time.Now()
 }

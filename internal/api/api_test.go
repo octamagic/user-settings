@@ -9,7 +9,6 @@ import (
 
 	sessionproto "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
 	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/mappers"
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
@@ -19,11 +18,9 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func setupTestAPI(ctrl *gomock.Controller) *prefsservice.MockSettingsService {
+func setupTestAPI(ctrl *gomock.Controller) (*Server, *prefsservice.MockSettingsService) {
 	mockService := prefsservice.NewMockSettingsService(ctrl)
-	protoMapper := mappers.ProtoMapper{}
-	InitService(mockService, protoMapper)
-	return mockService
+	return NewServer(mockService), mockService
 }
 
 const SettingName = "testSetting"
@@ -65,7 +62,7 @@ func TestGetSettings(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := setupTestAPI(ctrl)
+	server, mockService := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	t.Run("Valid request", func(t *testing.T) {
@@ -79,7 +76,7 @@ func TestGetSettings(t *testing.T) {
 		}
 
 		// Call the API
-		resp, err := GetSettings(ctx, req)
+		resp, err := server.GetSettings(ctx, req)
 		// Verify response
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
@@ -94,7 +91,7 @@ func TestGetSettings(t *testing.T) {
 			UserSession: createTestUserSession(),
 		}
 
-		_, err := GetSettings(ctx, req)
+		_, err := server.GetSettings(ctx, req)
 		assert.NotNil(t, err)
 	})
 }
@@ -103,7 +100,7 @@ func TestGetPrivacySettings(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := setupTestAPI(ctrl)
+	server, mockService := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	t.Run("Valid request", func(t *testing.T) {
@@ -124,7 +121,7 @@ func TestGetPrivacySettings(t *testing.T) {
 		}
 
 		// Call the API
-		resp, err := GetPrivacySettings(ctx, req)
+		resp, err := server.GetPrivacySettings(ctx, req)
 		// Verify response
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
@@ -142,7 +139,7 @@ func TestGetPrivacySettings(t *testing.T) {
 			UserUrns:    []string{"userUrn"},
 		}
 
-		_, err := GetPrivacySettings(ctx, req)
+		_, err := server.GetPrivacySettings(ctx, req)
 		assert.NotNil(t, err)
 	})
 }
@@ -151,7 +148,7 @@ func TestPutSettings(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := setupTestAPI(ctrl)
+	server, mockService := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	t.Run("Valid request", func(t *testing.T) {
@@ -166,7 +163,7 @@ func TestPutSettings(t *testing.T) {
 		}
 
 		// Call the API
-		resp, err := PutSetting(ctx, req)
+		resp, err := server.PutSetting(ctx, req)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Setting.Name, protoSetting.Name)
@@ -181,7 +178,7 @@ func TestPutSettings(t *testing.T) {
 			Setting:     createTestProtoPutSetting(),
 		}
 
-		_, err := PutSetting(ctx, req)
+		_, err := server.PutSetting(ctx, req)
 		assert.NotNil(t, err)
 
 		// Should be a Twirp InvalidArgument error
@@ -201,7 +198,7 @@ func TestPutSettings(t *testing.T) {
 			Setting:     invalidSetting,
 		}
 
-		_, err := PutSetting(ctx, req)
+		_, err := server.PutSetting(ctx, req)
 		assert.NotNil(t, err)
 
 		// Should be a Twirp InvalidArgument error
@@ -221,7 +218,7 @@ func TestPutSettings(t *testing.T) {
 			Setting:     invalidSetting,
 		}
 
-		_, err := PutSetting(ctx, req)
+		_, err := server.PutSetting(ctx, req)
 		assert.NotNil(t, err)
 
 		// Should be a Twirp InvalidArgument error
@@ -236,7 +233,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockService := setupTestAPI(ctrl)
+	server, mockService := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	const TestUserUrn = "userUrn"
@@ -258,7 +255,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		}
 
 		// Call the API
-		resp, err := FetchUsersPrivacyAttributes(ctx, req)
+		resp, err := server.FetchUsersPrivacyAttributes(ctx, req)
 		assert.Nil(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, len(resp.PrivacyAttributes), 1)
@@ -276,7 +273,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		}
 
 		// Call the API
-		resp, err := FetchUsersPrivacyAttributes(ctx, req)
+		resp, err := server.FetchUsersPrivacyAttributes(ctx, req)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
 	})
@@ -292,36 +289,36 @@ func assertTwirpCode(t *testing.T, err error, want twirp.ErrorCode) {
 
 func TestGetSettingsValidation(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	setupTestAPI(ctrl)
+	server, _ := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	t.Run("missing user_session is InvalidArgument, not a panic", func(t *testing.T) {
-		_, err := GetSettings(ctx, &proto.GetSettingsRequest{})
+		_, err := server.GetSettings(ctx, &proto.GetSettingsRequest{})
 		assertTwirpCode(t, err, twirp.InvalidArgument)
 	})
 
 	t.Run("missing user_urn is InvalidArgument", func(t *testing.T) {
-		_, err := GetSettings(ctx, &proto.GetSettingsRequest{UserSession: &sessionproto.UserSession{}})
+		_, err := server.GetSettings(ctx, &proto.GetSettingsRequest{UserSession: &sessionproto.UserSession{}})
 		assertTwirpCode(t, err, twirp.InvalidArgument)
 	})
 }
 
 func TestPutSettingErrorMapping(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockService := setupTestAPI(ctrl)
+	server, mockService := setupTestAPI(ctrl)
 	ctx := context.Background()
 
 	t.Run("invalid JSON value from the service is InvalidArgument", func(t *testing.T) {
 		mockService.EXPECT().PutSetting(ctx, gomock.Any()).Return(fmt.Errorf("%w: unexpected end of input", prefsservice.ErrInvalidValue))
 
-		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
+		_, err := server.PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
 		assertTwirpCode(t, err, twirp.InvalidArgument)
 	})
 
 	t.Run("any other service error is Internal", func(t *testing.T) {
 		mockService.EXPECT().PutSetting(ctx, gomock.Any()).Return(errors.New("dynamodb unavailable"))
 
-		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
+		_, err := server.PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
 		assertTwirpCode(t, err, twirp.Internal)
 	})
 
@@ -329,7 +326,7 @@ func TestPutSettingErrorMapping(t *testing.T) {
 		setting := createTestProtoPutSetting()
 		setting.Type = proto.SettingType(99)
 
-		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: setting})
+		_, err := server.PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: setting})
 		assertTwirpCode(t, err, twirp.InvalidArgument)
 	})
 }

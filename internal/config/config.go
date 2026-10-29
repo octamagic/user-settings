@@ -3,12 +3,14 @@ package config
 
 import (
 	"fmt"
+	"net"
+	"strconv"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 // Config holds every runtime setting the service reads from its environment.
-type Settings struct {
+type Config struct {
 	AppName     string `envconfig:"APP_NAME" default:"user-settings"`
 	Environment string `envconfig:"ENVIRONMENT" default:"local"`
 	Host        string `envconfig:"HOST" default:"0.0.0.0"`
@@ -26,13 +28,16 @@ type Settings struct {
 	UserDirectoryBaseURL  string `envconfig:"USER_DIRECTORY_BASE_URL" required:"true"`
 }
 
-// Config is the process-wide configuration populated by Load.
-var Config Settings
-
-// Load reads the environment into Config.
-func Load() error {
-	if err := envconfig.Process("", &Config); err != nil {
-		return fmt.Errorf("loading config: %w", err)
+// Load reads the process environment into a Config.
+func Load() (Config, error) {
+	var cfg Config
+	if err := envconfig.Process("", &cfg); err != nil {
+		return Config{}, fmt.Errorf("loading config: %w", err)
 	}
-	return nil
+	return cfg, nil
+}
+
+// Addr returns the host:port the HTTP server should listen on.
+func (c Config) Addr() string {
+	return net.JoinHostPort(c.Host, strconv.Itoa(c.Port))
 }

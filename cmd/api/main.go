@@ -1,45 +1,53 @@
+// Command api runs the user settings Twirp service.
 package main
 
 import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/bakins/twirpotel"
-	api "github.com/patrickisgreat/user-settings/internal/api"
-	"github.com/patrickisgreat/user-settings/internal/appserver"
+	"github.com/patrickisgreat/user-settings/internal/app"
 	"github.com/patrickisgreat/user-settings/internal/config"
-	genapi "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
-	"github.com/patrickisgreat/user-settings/internal/handlers"
+	"github.com/patrickisgreat/user-settings/internal/httpserver"
 	"github.com/patrickisgreat/user-settings/internal/logging"
-	"github.com/patrickisgreat/user-settings/internal/mappers"
-	"github.com/twitchtv/twirp"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
-	ctx := context.Background()
+	if err := run(); err != nil {
+		slog.Error("service exited with error", slog.Any("err", err))
+		os.Exit(1)
+	}
+}
 
-	// Initialize the app context (which sets up DynamoDB client, repository, and service)
-	appserver.InitContext(ctx)
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
 
-	logger := logging.New(config.Config.LogLevel, config.Config.LogPretty)
+	logger := logging.New(cfg.LogLevel, cfg.LogPretty)
 	slog.SetDefault(logger)
-	ctx = logging.WithContext(ctx, logger)
 
-	// Initialize the API with the service from the context
-	api.InitService(appserver.Context().UserSettingsService, mappers.ProtoMapper{})
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	// Create the Twirp server for user settings
-	ras := genapi.NewUserSettingsServiceServer(
-		&handlers.UserSettingsService{},
-		twirp.WithServerInterceptors(twirpotel.ServerInterceptor()),
-	)
+	service, err := app.New(ctx, cfg, logger)
+	if err != nil {
+		return fmt.Errorf("starting app: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := service.Shutdown(shutdownCtx); err != nil {
+			logger.Error("shutdown failed", slog.Any("err", err))
+		}
+	}()
 
-	router := appserver.NewRouter(&ras, logger)
-
-	appserver.Start(ctx, &appserver.StartParams{
-		Router: router,
-		Addr:   net.JoinHostPort(config.Config.Host, fmt.Sprintf("%d", config.Config.Port)),
-	})
+	return httpserver.Run(ctx, cfg.Addr(), service.Handler, logger)
 }
