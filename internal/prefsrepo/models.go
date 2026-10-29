@@ -47,3 +47,14 @@ func NewSetting(userUrn string, name string, settingType SettingType, value stri
 		UpdatedAt:   time.Now(),
 	}
 }
+
+// ParseSettingType returns the SettingType for a stored type code. The
+// second result is false when the code is unknown.
+func ParseSettingType(code string) (SettingType, bool) {
+	for settingType, name := range settingTypeName {
+		if name == code {
+			return settingType, true
+		}
+	}
+	return SettingTypeString, false
+}

@@ -86,14 +86,14 @@ func (s *ProtoMapper) MapPrivacyAttributes(privacyAttributes []domain.UserPrivac
 	return result
 }
 
-// settingTypeToProto maps internal string type to proto enum
+// settingTypeToProto maps a stored type code to the proto enum. Unknown codes
+// fall back to STRING, which is also the proto zero value.
 func (s *ProtoMapper) settingTypeToProto(internalType string) proto.SettingType {
-	switch internalType {
-	case prefsrepo.SettingTypeString.String():
-		return proto.SettingType_STRING
-	case prefsrepo.SettingTypeBoolean.String():
+	settingType, _ := prefsrepo.ParseSettingType(internalType)
+	switch settingType {
+	case prefsrepo.SettingTypeBoolean:
 		return proto.SettingType_BOOLEAN
-	case proto.SettingType_NUMBER.String():
+	case prefsrepo.SettingTypeNumber:
 		return proto.SettingType_NUMBER
 	default:
 		return proto.SettingType_STRING
