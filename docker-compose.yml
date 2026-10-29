@@ -1,0 +1,35 @@
+name: user-settings-api
+services:
+  dynamodb-local:
+    image: "amazon/dynamodb-local:latest"
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data -port 9000"
+    ports:
+      - "8900:9000"
+    volumes:
+      - "./docker/dynamodb/data:/home/dynamodblocal/data"
+  dynamodb-setup:
+    image: amazon/aws-cli
+    ports:
+      - "8901:9001"
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    entrypoint: ["/dynamodb-setup-entrypoint.sh"]
+    command: dynamodb list-tables --endpoint-url http://dynamodb-local:9000 --region us-east-1
+    depends_on:
+      - dynamodb-local
+    volumes:
+      - "./docker/dynamodb/setup-entrypoint.sh:/dynamodb-setup-entrypoint.sh"
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    ports:
+      - "8001:8001"
+    environment:
+      DYNAMO_ENDPOINT: "http://dynamodb-local:9000"
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      - dynamodb-local
+networks:
+  user-settings-local:

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package usersettings.v1;
+
+import "session.proto";
+
+option go_package = "github.com/octamagic/user-settings/internal/generated/usersettings/v1;usersettingsv1";
+
+enum SettingType {
+  STRING = 0;
+  BOOLEAN = 1;
+  NUMBER = 2;
+}
+
+message Setting {
+  string user_urn = 1;
+  string name = 2;
+  SettingType type = 3;
+  string value = 4;
+  int64 updated_at = 5;
+}
+
+message PutSetting {
+  string name = 1;
+  SettingType type = 2;
+  string value = 3;
+}
+
+message UserSettings {
+  string user_urn = 1;
+  repeated Setting settings = 2;
+}
+
+message GetSettingsRequest {
+  usersettings.common.v1.UserSession user_session = 1;
+  repeated string setting_names = 2;
+}
+
+message GetSettingsResponse {
+  repeated Setting settings = 1;
+}
+
+message GetPrivacySettingsRequest {
+  usersettings.common.v1.UserSession user_session = 1;
+  repeated string user_urns = 2;
+}
+
+message GetPrivacySettingsResponse {
+  repeated UserSettings settings = 1;
+}
+
+message PutSettingRequest {
+  usersettings.common.v1.UserSession user_session = 1;
+  PutSetting setting = 2;
+}
+
+message PutSettingResponse {
+  Setting setting = 1;
+}
+
+message UserPrivacyAttributes {
+  string user_urn = 1;
+  bool is_minor = 2;
+}
+
+message UsersPrivacyAttributesRequest {
+  usersettings.common.v1.UserSession user_session = 1;
+  repeated string user_urns = 2;
+}
+
+message UsersPrivacyAttributesResponse {
+  repeated UserPrivacyAttributes privacy_attributes = 1;
+}
+
+// UserSettingsService stores and retrieves per-user settings.
+service UserSettingsService {
+  // GetSettings returns the caller's settings, optionally filtered by name.
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {}
+  // GetPrivacySettings returns the privacy-relevant settings of other users,
+  // filling in definition defaults for settings they have never set.
+  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse) {}
+  // PutSetting creates or overwrites one setting for the caller.
+  rpc PutSetting(PutSettingRequest) returns (PutSettingResponse) {}
+  // FetchUsersPrivacyAttributes reports whether each user is a minor under
+  // the age rules of their country.
+  rpc FetchUsersPrivacyAttributes(UsersPrivacyAttributesRequest) returns (UsersPrivacyAttributesResponse) {}
+}

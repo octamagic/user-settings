@@ -1,0 +1,22 @@
+{
+  "mappings": [
+    {
+      "request": {
+        "method": "GET",
+        "urlPath": "/users",
+        "queryParameters": {
+          "urns": {
+            "contains": "urn:user:2"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "bodyFileName": "user2.json"
+      }
+    }
+  ]
+}
