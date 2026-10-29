@@ -67,17 +67,3 @@ func (mr *MockRepositoryMockRecorder) GetPrivacySettingsNames() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPrivacySettingsNames", reflect.TypeOf((*MockRepository)(nil).GetPrivacySettingsNames))
 }
-
-// GetSettingsNames mocks base method.
-func (m *MockRepository) GetSettingsNames() []string {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSettingsNames")
-	ret0, _ := ret[0].([]string)
-	return ret0
-}
-
-// GetSettingsNames indicates an expected call of GetSettingsNames.
-func (mr *MockRepositoryMockRecorder) GetSettingsNames() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSettingsNames", reflect.TypeOf((*MockRepository)(nil).GetSettingsNames))
-}

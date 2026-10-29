@@ -25,14 +25,12 @@ type SettingDefinition struct {
 
 type Repository interface {
 	GetDefinition(settingName string) (*SettingDefinition, error)
-	GetSettingsNames() []string
 	GetPrivacySettingsNames() []string
 }
 
 // Repository in-memory store for the settings definitions
 type definitionsRepository struct {
 	settings             []SettingDefinition
-	settingsNames        []string
 	privacySettingsNames []string
 }
 
@@ -40,7 +38,6 @@ func NewDefinitionsRepository() Repository {
 	settings := getSettings()
 	return &definitionsRepository{
 		settings:             settings,
-		settingsNames:        getSettingNames(settings),
 		privacySettingsNames: getPrivacySettingNames(settings),
 	}
 }
@@ -52,10 +49,6 @@ func (repo *definitionsRepository) GetDefinition(settingName string) (*SettingDe
 		}
 	}
 	return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, settingName)
-}
-
-func (repo *definitionsRepository) GetSettingsNames() []string {
-	return repo.settingsNames
 }
 
 func (repo *definitionsRepository) GetPrivacySettingsNames() []string {
@@ -70,14 +63,6 @@ func getSettings() []SettingDefinition {
 	}
 
 	return settings
-}
-
-func getSettingNames(definitions []SettingDefinition) []string {
-	names := make([]string, 0)
-	for _, setting := range definitions {
-		names = append(names, setting.Name)
-	}
-	return names
 }
 
 func getPrivacySettingNames(definitions []SettingDefinition) []string {

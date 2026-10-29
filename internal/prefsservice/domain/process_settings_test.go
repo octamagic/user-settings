@@ -13,84 +13,6 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-func TestGetSettings(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockUserDirectory := NewMockUserDirectory(ctrl)
-	mockRulesService := NewMockRulesService(ctrl)
-	mockClock := NewMockClock(ctrl)
-	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
-
-	// Test context
-	ctx := context.Background()
-
-	// Test setting
-	testUserUrn := "soundcloud:users:123456"
-	testUserCountryCode := "US"
-	testUserDateOfBirth := "2000/01/01"
-	testDate := time.Now()
-	directoryUser := userdirectory.User{
-		URN:         testUserUrn,
-		CountryCode: &testUserCountryCode,
-		DateOfBirth: &testUserDateOfBirth,
-	}
-
-	t.Run("ProcessMinorProtectionSettings returns setting for user", func(t *testing.T) {
-		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
-			directoryUser,
-		}, nil)
-
-		mockClock.EXPECT().Now().Return(testDate)
-		mockRulesService.EXPECT().ApplyRules(gomock.Any(), gomock.Any()).Return(rulesservice.ApplyRestriction, nil)
-		mockSettingsRepo.EXPECT().PutSetting(ctx, gomock.Any()).Return(nil)
-
-		setting, err := processor.ProcessMinorProtectionSettings(ctx, []string{testUserUrn})
-
-		assert.Nil(t, err)
-		assert.NotNil(t, setting)
-	})
-
-	t.Run("ProcessMinorProtectionSettings returns error if setting creation failed", func(t *testing.T) {
-		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
-			directoryUser,
-		}, nil)
-
-		mockClock.EXPECT().Now().Return(testDate)
-		mockRulesService.EXPECT().ApplyRules(gomock.Any(), gomock.Any()).Return(rulesservice.ApplyRestriction, nil)
-		mockSettingsRepo.EXPECT().PutSetting(ctx, gomock.Any()).Return(errors.New("error"))
-
-		setting, err := processor.ProcessMinorProtectionSettings(ctx, []string{testUserUrn})
-
-		assert.Nil(t, setting)
-		assert.NotNil(t, err)
-	})
-
-	t.Run("ProcessMinorProtectionSettings returns error if rules returned error", func(t *testing.T) {
-		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
-			directoryUser,
-		}, nil)
-
-		mockClock.EXPECT().Now().Return(testDate)
-		mockRulesService.EXPECT().ApplyRules(gomock.Any(), gomock.Any()).Return(rulesservice.ApplyRestriction, errors.New("error"))
-
-		setting, err := processor.ProcessMinorProtectionSettings(ctx, []string{testUserUrn})
-
-		assert.Nil(t, setting)
-		assert.NotNil(t, err)
-	})
-
-	t.Run("ProcessMinorProtectionSettings returns error if the directory did not return users", func(t *testing.T) {
-		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return(nil, errors.New("directory error"))
-
-		setting, err := processor.ProcessMinorProtectionSettings(ctx, []string{testUserUrn})
-
-		assert.Nil(t, setting)
-		assert.NotNil(t, err)
-	})
-}
-
 func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -98,8 +20,7 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
-	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock)
 
 	// Test context
 	ctx := context.Background()
@@ -164,8 +85,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
-	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock)
 
 	// Test context
 	ctx := context.Background()
@@ -224,7 +144,7 @@ func TestFetchUsersPrivacyAttributesFailsClosedWithoutDateOfBirth(t *testing.T) 
 	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
-	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, NewMockSettingsRepository(ctrl))
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock)
 	ctx := context.Background()
 	country := "GB"
 

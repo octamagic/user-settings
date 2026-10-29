@@ -25,15 +25,12 @@ type rulesService struct {
 }
 
 func NewRulesService(rulesRepository RegionalRulesRepository) RulesService {
-	// Now accepts any type that implements SettingsRepository
 	return &rulesService{
 		rulesRepo: rulesRepository,
 	}
 }
 
 func (s *rulesService) ApplyRules(age int, countryCode string) (RuleApplication, error) {
-	// if setting type is PROTECTION_ENABLED, we need to apply the rules
-
 	rules, err := s.rulesRepo.GetRules(countryCode)
 	if err != nil {
 		return NoRestriction, err

@@ -59,7 +59,6 @@ func New(ctx context.Context, cfg config.Config, logger *slog.Logger) (*App, err
 		userdirectory.New(cfg.UserDirectoryBaseURL),
 		rulesService,
 		domain.DefaultClock{},
-		settingsRepo,
 	)
 	settings := prefsservice.NewSettingsService(settingsRepo, minorProcessor, definitions.NewDefinitionsRepository())
 

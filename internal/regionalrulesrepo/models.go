@@ -12,15 +12,9 @@ const (
 )
 
 type Rule struct {
-	ID   string
-	Type RuleType
-	// todo unwrap the values
+	ID    string
+	Type  RuleType
 	Value string
-}
-
-type UserAgeLocation struct {
-	Age      int
-	Location string
 }
 
 type RuleAgeRestrictionValue struct {

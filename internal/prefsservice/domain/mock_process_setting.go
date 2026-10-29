@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	prefsrepo "github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	rulesservice "github.com/patrickisgreat/user-settings/internal/rulesservice"
 	userdirectory "github.com/patrickisgreat/user-settings/internal/userdirectory"
 	gomock "go.uber.org/mock/gomock"
@@ -97,44 +96,6 @@ func (mr *MockRulesServiceMockRecorder) ApplyRules(age, countryCode any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyRules", reflect.TypeOf((*MockRulesService)(nil).ApplyRules), age, countryCode)
 }
 
-// MockSettingsRepository is a mock of SettingsRepository interface.
-type MockSettingsRepository struct {
-	ctrl     *gomock.Controller
-	recorder *MockSettingsRepositoryMockRecorder
-	isgomock struct{}
-}
-
-// MockSettingsRepositoryMockRecorder is the mock recorder for MockSettingsRepository.
-type MockSettingsRepositoryMockRecorder struct {
-	mock *MockSettingsRepository
-}
-
-// NewMockSettingsRepository creates a new mock instance.
-func NewMockSettingsRepository(ctrl *gomock.Controller) *MockSettingsRepository {
-	mock := &MockSettingsRepository{ctrl: ctrl}
-	mock.recorder = &MockSettingsRepositoryMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockSettingsRepository) EXPECT() *MockSettingsRepositoryMockRecorder {
-	return m.recorder
-}
-
-// PutSetting mocks base method.
-func (m *MockSettingsRepository) PutSetting(ctx context.Context, setting prefsrepo.Setting) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PutSetting", ctx, setting)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// PutSetting indicates an expected call of PutSetting.
-func (mr *MockSettingsRepositoryMockRecorder) PutSetting(ctx, setting any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PutSetting", reflect.TypeOf((*MockSettingsRepository)(nil).PutSetting), ctx, setting)
-}
-
 // MockMinorSettingProcessor is a mock of MinorSettingProcessor interface.
 type MockMinorSettingProcessor struct {
 	ctrl     *gomock.Controller
@@ -172,19 +133,4 @@ func (m *MockMinorSettingProcessor) FetchUsersPrivacyAttributes(ctx context.Cont
 func (mr *MockMinorSettingProcessorMockRecorder) FetchUsersPrivacyAttributes(ctx, userUrns any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUsersPrivacyAttributes", reflect.TypeOf((*MockMinorSettingProcessor)(nil).FetchUsersPrivacyAttributes), ctx, userUrns)
-}
-
-// ProcessMinorProtectionSettings mocks base method.
-func (m *MockMinorSettingProcessor) ProcessMinorProtectionSettings(ctx context.Context, userUrns []string) ([]prefsrepo.Setting, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProcessMinorProtectionSettings", ctx, userUrns)
-	ret0, _ := ret[0].([]prefsrepo.Setting)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ProcessMinorProtectionSettings indicates an expected call of ProcessMinorProtectionSettings.
-func (mr *MockMinorSettingProcessorMockRecorder) ProcessMinorProtectionSettings(ctx, userUrns any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessMinorProtectionSettings", reflect.TypeOf((*MockMinorSettingProcessor)(nil).ProcessMinorProtectionSettings), ctx, userUrns)
 }

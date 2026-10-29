@@ -38,7 +38,7 @@ func TestGetSettings(t *testing.T) {
 	userDirectory := domain.NewMockUserDirectory(ctrl)
 	settingsDefinitionRepo := definitions.NewMockRepository(ctrl)
 
-	minorSettingProcessor := domain.NewMinorSettingProcessor(userDirectory, rulesService, domain.DefaultClock{}, mockRepo)
+	minorSettingProcessor := domain.NewMinorSettingProcessor(userDirectory, rulesService, domain.DefaultClock{})
 	service := NewSettingsService(mockRepo, minorSettingProcessor, settingsDefinitionRepo)
 
 	// Test context

@@ -35,26 +35,6 @@ func TestSettingConversion(t *testing.T) {
 		assert.Equal(t, protoSetting.Value, repoSetting.Value)
 	})
 
-	// Test SettingFromProto
-	t.Run("SettingFromProto", func(t *testing.T) {
-		protoSetting := &proto.Setting{
-			UserUrn:   "soundcloud:users:123456",
-			Name:      "testSetting",
-			Type:      proto.SettingType_BOOLEAN,
-			UpdatedAt: now.Unix(),
-			Value:     `true`,
-		}
-
-		repoSetting, err := mapper.SettingFromProto(protoSetting)
-
-		assert.Nil(t, err)
-		assert.Equal(t, protoSetting.UserUrn, repoSetting.UserUrn)
-		assert.Equal(t, protoSetting.UpdatedAt, repoSetting.UpdatedAt.Unix())
-		assert.Equal(t, protoSetting.Name, repoSetting.Name)
-		assert.Equal(t, prefsrepo.SettingTypeBoolean.String(), repoSetting.SettingType)
-		assert.Equal(t, protoSetting.Value, repoSetting.Value)
-	})
-
 	t.Run("PrivacyAttributes to proto", func(t *testing.T) {
 		privacyAttributes := []domain.UserPrivacyAttributes{
 			{

@@ -48,7 +48,6 @@ func NewSettingsService(
 	minorSettingProcessor domain.MinorSettingProcessor,
 	settingsDefinitionRepo definitions.Repository,
 ) SettingsService {
-	// Now accepts any type that implements SettingsRepository
 	return &settingsService{
 		settingsRepo:           settingsRepository,
 		minorSettingProcessor:  minorSettingProcessor,

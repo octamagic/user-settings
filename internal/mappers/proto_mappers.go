@@ -12,17 +12,6 @@ import (
 type ProtoMapper struct {
 }
 
-func (s *ProtoMapper) MapUserSettings(repoSetting []prefsrepo.Setting) []*proto.UserSettings {
-	protoSettings := make([]*proto.UserSettings, len(repoSetting))
-	for i, setting := range repoSetting {
-		protoSettings[i] = &proto.UserSettings{
-			UserUrn:  setting.UserUrn,
-			Settings: []*proto.Setting{s.SettingToProto(&setting)},
-		}
-	}
-	return protoSettings
-}
-
 // SettingToProto converts an internal Setting to a proto Setting
 func (s *ProtoMapper) SettingToProto(setting *prefsrepo.Setting) *proto.Setting {
 	return &proto.Setting{
@@ -32,22 +21,6 @@ func (s *ProtoMapper) SettingToProto(setting *prefsrepo.Setting) *proto.Setting 
 		UpdatedAt: setting.UpdatedAt.Unix(),
 		Value:     setting.Value,
 	}
-}
-
-// SettingFromProto creates a Setting from a proto Setting
-func (s *ProtoMapper) SettingFromProto(protoSetting *proto.Setting) (*prefsrepo.Setting, error) {
-	internalType, err := settingTypeFromProto(protoSetting.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	return &prefsrepo.Setting{
-		UserUrn:     protoSetting.UserUrn,
-		Name:        protoSetting.Name,
-		UpdatedAt:   time.Unix(protoSetting.UpdatedAt, 0),
-		SettingType: internalType,
-		Value:       protoSetting.Value,
-	}, nil
 }
 
 // PutSettingToSetting creates a Setting from a proto PutSetting

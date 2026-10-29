@@ -9,11 +9,6 @@ import (
 func TestGetSettings(t *testing.T) {
 	repo := NewDefinitionsRepository()
 
-	t.Run("Get settings names", func(t *testing.T) {
-		names := repo.GetSettingsNames()
-		assert.Contains(t, names, "liked_by_playlist")
-	})
-
 	t.Run("Get privacy settings names", func(t *testing.T) {
 		names := repo.GetPrivacySettingsNames()
 		assert.Contains(t, names, "liked_by_playlist")
