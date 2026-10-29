@@ -28,7 +28,7 @@ jobs:
         run: |
           echo "https://sc-github-bot:${{ secrets.SC_GITHUB_BOT_PAT }}@github.com" > "${HOME}/.git-credentials"
           git config --global credential.helper store
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         name: setup go
         with:
           go-version-file: 'services/app/go.mod'
@@ -78,7 +78,7 @@ jobs:
         name: git checkout
         with:
           ref: ${{ inputs.ref }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         name: setup go
         with:
           go-version-file: 'services/app/go.mod'
