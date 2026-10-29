@@ -6,7 +6,7 @@
 - Docker, for DynamoDB Local and the test containers
 - `protoc` (`brew install protobuf`), only if you edit `rpc/*.proto`
 - `golangci-lint` v2 (`brew install golangci-lint`)
-- `make tools` installs `protoc-gen-go`, `protoc-gen-twirp`, `mockgen` and `air`
+- `make tools` installs `protoc-gen-go`, `protoc-gen-twirp` and `mockgen` at the pinned versions; `make dev-tools` adds `air` for `make run`
 
 ## Everyday commands
 
@@ -134,10 +134,12 @@ reusable workflows pinned to `@v0`. Credentialed jobs skip until these exist:
 | `TF_STATE_BUCKET` | terraform | S3 bucket for state |
 | `AWS_TERRAFORM_ROLE_ARN` | terraform | role trusted by this repo through OIDC, able to manage the stack |
 | `AWS_DEPLOY_ROLE_ARN_DEV` / `_STAGING` / `_PRODUCTION` | deploy | the `ci_role_arn` output of each environment |
+| `CLAUDE_REVIEWS` | claude-code-review, claude | `true` to enable the automated PR review and the @claude mention responder |
 
 | secret | used by | value |
 | --- | --- | --- |
 | `TF_SECRET_VARS` | terraform | newline-separated `key=value` Terraform inputs (`vpc_id=...`, `private_subnet_ids=[...]`, `user_directory_base_url=...`) |
+| `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` | claude-code-review, claude | an OAuth token from `claude setup-token` (`sk-ant-oat01-…`, billed to the subscription) or a console API key (`sk-ant-api03-…`, billed per token); set one, not both |
 
 GitHub Environments `infrastructure`, `dev`, `staging` and `production` gate the apply
 and deploy jobs; put required reviewers on `production` and `infrastructure`.

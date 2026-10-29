@@ -7,10 +7,18 @@ UNIT_PKGS   := $(shell go list ./... | grep -v -e /generated -e /tests/)
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
-tools: ## Install code generators and dev tools
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install github.com/twitchtv/twirp/protoc-gen-twirp@latest
-	go install go.uber.org/mock/mockgen@latest
+# The generators are built with the module's Go version, not whatever is on PATH:
+# protoc-gen-twirp gzips the file descriptor at generation time and compress/flate
+# output changes between Go releases, so a newer local Go produces a different
+# (but equivalent) byte slice and the CI freshness check fails.
+GO_VERSION := $(shell awk '/^go /{print $$2}' go.mod)
+
+tools: ## Install the code generators, pinned, built with the go.mod Go version
+	GOTOOLCHAIN=go$(GO_VERSION) go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
+	GOTOOLCHAIN=go$(GO_VERSION) go install github.com/twitchtv/twirp/protoc-gen-twirp@v8.1.3
+	GOTOOLCHAIN=go$(GO_VERSION) go install go.uber.org/mock/mockgen@v0.6.0
+
+dev-tools: tools ## Generators plus the live-reload runner used by `make run`
 	go install github.com/air-verse/air@latest
 
 generate: generate-proto generate-mocks ## Regenerate protobuf, Twirp and mock code
