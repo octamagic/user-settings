@@ -218,3 +218,28 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 }
+
+func TestFetchUsersPrivacyAttributesFailsClosedWithoutDateOfBirth(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockUserDirectory := NewMockUserDirectory(ctrl)
+	mockRulesService := NewMockRulesService(ctrl)
+	mockClock := NewMockClock(ctrl)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, NewMockSettingsRepository(ctrl))
+	ctx := context.Background()
+	country := "GB"
+
+	for name, dob := range map[string]*string{"missing": nil, "malformed": ptr("not-a-date")} {
+		t.Run(name+" date of birth is evaluated as age 0", func(t *testing.T) {
+			mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+				{URN: "urn:user:1", CountryCode: &country, DateOfBirth: dob},
+			}, nil)
+			mockClock.EXPECT().Now().Return(time.Now())
+			mockRulesService.EXPECT().ApplyRules(0, country).Return(rulesservice.ApplyRestriction, nil)
+
+			attrs, err := processor.FetchUsersPrivacyAttributes(ctx, []string{"urn:user:1"})
+
+			assert.Nil(t, err)
+			assert.True(t, attrs[0].IsMinor)
+		})
+	}
+}

@@ -3,11 +3,14 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/patrickisgreat/user-settings/internal/logging"
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/patrickisgreat/user-settings/internal/rulesservice"
 	"github.com/patrickisgreat/user-settings/internal/userdirectory"
@@ -69,7 +72,7 @@ func (m *minorSettingsProcessor) ProcessMinorProtectionSettings(ctx context.Cont
 	var settings []prefsrepo.Setting
 
 	for _, user := range users {
-		ruleForUser, err := getRulesForUser(user, m.clock, m.rulesService)
+		ruleForUser, err := getRulesForUser(ctx, user, m.clock, m.rulesService)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +101,7 @@ func (m *minorSettingsProcessor) FetchUsersPrivacyAttributes(ctx context.Context
 	var privacyAttributes []UserPrivacyAttributes
 
 	for _, user := range users {
-		ruleForUser, err := getRulesForUser(user, m.clock, m.rulesService)
+		ruleForUser, err := getRulesForUser(ctx, user, m.clock, m.rulesService)
 		if err != nil {
 			return nil, err
 		}
@@ -112,37 +115,68 @@ func (m *minorSettingsProcessor) FetchUsersPrivacyAttributes(ctx context.Context
 	return privacyAttributes, nil
 }
 
-// mapDateOfBirth parses a raw date of birth string in format "YYYY/MM"
-func mapDateOfBirth(rawDateOfBirth *string) (time.Time, error) {
-	if rawDateOfBirth == nil || *rawDateOfBirth == "" {
-		return time.Time{}, nil
-	}
+// errUnknownDateOfBirth marks a directory record whose date of birth is
+// missing or malformed. Callers treat such users as minors (fail closed).
+var errUnknownDateOfBirth = errors.New("date of birth is missing or malformed")
 
-	parts := strings.Split(*rawDateOfBirth, "/")
+// parseDateOfBirth parses the directory's "YYYY/MM/DD" format. Any missing,
+// non-numeric or impossible date (such as 2000/02/31) is an error.
+func parseDateOfBirth(raw *string) (time.Time, error) {
+	if raw == nil || *raw == "" {
+		return time.Time{}, errUnknownDateOfBirth
+	}
+	parts := strings.Split(*raw, "/")
 	if len(parts) != 3 {
-		return time.Time{}, nil
+		return time.Time{}, fmt.Errorf("%w: %q", errUnknownDateOfBirth, *raw)
 	}
-
-	year, err := strconv.Atoi(parts[0])
-	if err != nil {
-		return time.Time{}, nil
+	fields := make([]int, 3)
+	for i, part := range parts {
+		n, err := strconv.Atoi(part)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("%w: %q", errUnknownDateOfBirth, *raw)
+		}
+		fields[i] = n
 	}
-
-	month, err := strconv.Atoi(parts[1])
-	if err != nil {
-		return time.Time{}, nil
+	year, month, day := fields[0], time.Month(fields[1]), fields[2]
+	dob := time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
+	// time.Date normalises out-of-range values, so compare back to catch them.
+	if dob.Year() != year || dob.Month() != month || dob.Day() != day {
+		return time.Time{}, fmt.Errorf("%w: %q", errUnknownDateOfBirth, *raw)
 	}
-
-	day, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return time.Time{}, nil
-	}
-
-	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
+	return dob, nil
 }
 
-func getRulesForUser(user userdirectory.User, clock Clock, rulesService RulesService) (rulesservice.RuleApplication, error) {
-	age := calculateAgeFromDateOfBirth(user.DateOfBirth, clock)
+// ageAt returns the number of whole years between dob and now.
+func ageAt(dob, now time.Time) int {
+	years := now.Year() - dob.Year()
+	birthdayThisYear := dob.AddDate(years, 0, 0)
+	if now.Before(birthdayThisYear) {
+		years--
+	}
+	return max(years, 0)
+}
+
+// ageFromDateOfBirth computes a user's age for rule evaluation. An unknown
+// date of birth yields 0, the most protective assumption, together with the
+// parse error so the caller can log it.
+func ageFromDateOfBirth(raw *string, now time.Time) (int, error) {
+	dob, err := parseDateOfBirth(raw)
+	if err != nil {
+		return 0, err
+	}
+	// The directory's day-of-month is not always reliable. Shifting the date
+	// of birth one month later makes a user count as younger around their
+	// birthday, which errs on the side of protection.
+	dob = dob.AddDate(0, 1, 0)
+	return ageAt(dob, now), nil
+}
+
+func getRulesForUser(ctx context.Context, user userdirectory.User, clock Clock, rulesService RulesService) (rulesservice.RuleApplication, error) {
+	age, err := ageFromDateOfBirth(user.DateOfBirth, clock.Now())
+	if err != nil {
+		logging.FromContext(ctx).Warn("treating user with unknown date of birth as a minor",
+			slog.String("userUrn", user.URN), slog.Any("err", err))
+	}
 
 	country := ""
 	if user.CountryCode != nil {
@@ -171,22 +205,6 @@ func createSettingWithRule(ctx context.Context, userUrn string, rule rulesservic
 	}
 
 	return tempSetting, nil
-}
-
-// calculateAgeFromDateOfBirth calculates age from a date of birth string
-func calculateAgeFromDateOfBirth(rawDateOfBirth *string, clock Clock) int {
-	dob, err := mapDateOfBirth(rawDateOfBirth)
-	if err != nil {
-		return 0 // Default age when date of birth is invalid
-	}
-
-	// to be on safe side due to not having sometime correct day we add 1 month to keep user protected
-	dob = dob.AddDate(0, 1, 0)
-	difference := clock.Now().Sub(dob)
-
-	years := int(difference.Hours() / 24 / 365)
-
-	return years
 }
 
 // findUsers returns the directory record for every requested URN, in request order
