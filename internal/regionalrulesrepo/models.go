@@ -8,7 +8,7 @@ import (
 type RuleType int
 
 const (
-	RuleAgeRestriction = iota
+	RuleAgeRestriction RuleType = iota
 )
 
 type Rule struct {

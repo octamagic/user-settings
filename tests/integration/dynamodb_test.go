@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -12,16 +13,24 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
 	testTableName       = "user-settings-test"
-	testEndpoint        = "http://localhost:9000" // DynamoDB Local endpoint
-	testRegion          = "eu-central-1"
+	testEndpoint        = envOr("DYNAMODB_ENDPOINT", "http://127.0.0.1:8900") // DynamoDB Local
+	testRegion          = envOr("AWS_REGION", "us-east-1")
 	dynamoDBClient      *dynamodb.Client
 	testRepo            prefsrepo.SettingsRepository
 	dynamoDBInitialized = false
 )
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 // setupDynamoDB initializes the DynamoDB client and creates a test table
 func setupDynamoDB(t *testing.T) {
@@ -118,7 +127,7 @@ func TestSettingsRepositoryIntegration(t *testing.T) {
 	ctx := context.Background()
 
 	// Test data
-	userUrn := "soundcloud:users:54321"
+	userUrn := "urn:user:54321"
 	name := "testSetting"
 	settingType := prefsrepo.SettingTypeBoolean
 	value := `true`
@@ -129,17 +138,17 @@ func TestSettingsRepositoryIntegration(t *testing.T) {
 	// Test PutSetting (update existing setting)
 	t.Run("PutSetting", func(t *testing.T) {
 		err := testRepo.PutSetting(ctx, setting)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		_, err = testRepo.GetSettings(ctx, userUrn, []string{setting.Name})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	})
 
 	// Test GetSettings
 	t.Run("GetSettings", func(t *testing.T) {
 		fetchedSetting, err := testRepo.GetSettings(ctx, userUrn, []string{})
-		assert.Nil(t, err)
-		assert.Equal(t, len(fetchedSetting), 1)
+		require.NoError(t, err)
+		assert.Len(t, fetchedSetting, 1)
 		assert.Equal(t, fetchedSetting[0].UserUrn, setting.UserUrn)
 		assert.Equal(t, fetchedSetting[0].Name, setting.Name)
 		assert.Equal(t, fetchedSetting[0].SettingType, setting.SettingType)
@@ -148,7 +157,7 @@ func TestSettingsRepositoryIntegration(t *testing.T) {
 
 		// Try to get a non-existent setting
 		fetchedSetting, err = testRepo.GetSettings(ctx, userUrn, []string{"nonexistent"})
-		assert.Nil(t, err)
-		assert.Len(t, fetchedSetting, 0)
+		require.NoError(t, err)
+		assert.Empty(t, fetchedSetting)
 	})
 }

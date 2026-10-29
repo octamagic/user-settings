@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetSettings(t *testing.T) {
@@ -16,11 +17,11 @@ func TestGetSettings(t *testing.T) {
 
 	t.Run("Get definition", func(t *testing.T) {
 		definition, err := repo.GetDefinition("liked_by_playlist")
-		assert.Nil(t, err)
-		assert.Equal(t, definition.Name, "liked_by_playlist")
-		assert.Equal(t, definition.Type, "b")
-		assert.Equal(t, definition.Privacy, true)
-		assert.Equal(t, definition.Defaults.Global, "true")
-		assert.Equal(t, definition.Defaults.Minor, "false")
+		require.NoError(t, err)
+		assert.Equal(t, "liked_by_playlist", definition.Name)
+		assert.Equal(t, "b", definition.Type)
+		assert.True(t, definition.Privacy)
+		assert.Equal(t, "true", definition.Defaults.Global)
+		assert.Equal(t, "false", definition.Defaults.Minor)
 	})
 }

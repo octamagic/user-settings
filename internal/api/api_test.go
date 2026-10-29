@@ -13,6 +13,7 @@ import (
 	"github.com/patrickisgreat/user-settings/internal/prefsservice"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/twitchtv/twirp"
 	"go.uber.org/mock/gomock"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -78,9 +79,9 @@ func TestGetSettings(t *testing.T) {
 		// Call the API
 		resp, err := server.GetSettings(ctx, req)
 		// Verify response
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Equal(t, len(resp.Settings), 1)
+		assert.Len(t, resp.Settings, 1)
 		assert.Equal(t, testSetting.UserUrn, resp.Settings[0].UserUrn)
 		assert.Equal(t, testSetting.Name, resp.Settings[0].Name)
 	})
@@ -92,7 +93,7 @@ func TestGetSettings(t *testing.T) {
 		}
 
 		_, err := server.GetSettings(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -123,11 +124,11 @@ func TestGetPrivacySettings(t *testing.T) {
 		// Call the API
 		resp, err := server.GetPrivacySettings(ctx, req)
 		// Verify response
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Equal(t, len(resp.Settings), 1)
+		assert.Len(t, resp.Settings, 1)
 		userSettings := resp.Settings[0]
-		assert.Equal(t, len(userSettings.Settings), 1)
+		assert.Len(t, userSettings.Settings, 1)
 		assert.Equal(t, testSetting.UserUrn, userSettings.Settings[0].UserUrn)
 		assert.Equal(t, testSetting.Name, userSettings.Settings[0].Name)
 	})
@@ -140,7 +141,7 @@ func TestGetPrivacySettings(t *testing.T) {
 		}
 
 		_, err := server.GetPrivacySettings(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -164,7 +165,7 @@ func TestPutSettings(t *testing.T) {
 
 		// Call the API
 		resp, err := server.PutSetting(ctx, req)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, resp.Setting.Name, protoSetting.Name)
 		assert.Equal(t, resp.Setting.Value, protoSetting.Value)
@@ -179,13 +180,13 @@ func TestPutSettings(t *testing.T) {
 		}
 
 		_, err := server.PutSetting(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 
 		// Should be a Twirp InvalidArgument error
 		var twerr twirp.Error
 		ok := errors.As(err, &twerr)
 		assert.True(t, ok)
-		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+		assert.Equal(t, twirp.InvalidArgument, twerr.Code())
 	})
 
 	t.Run("Missing setting Name", func(t *testing.T) {
@@ -199,13 +200,13 @@ func TestPutSettings(t *testing.T) {
 		}
 
 		_, err := server.PutSetting(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 
 		// Should be a Twirp InvalidArgument error
 		var twerr twirp.Error
 		ok := errors.As(err, &twerr)
 		assert.True(t, ok)
-		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+		assert.Equal(t, twirp.InvalidArgument, twerr.Code())
 	})
 
 	t.Run("Missing setting Value", func(t *testing.T) {
@@ -219,13 +220,13 @@ func TestPutSettings(t *testing.T) {
 		}
 
 		_, err := server.PutSetting(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 
 		// Should be a Twirp InvalidArgument error
 		var twerr twirp.Error
 		ok := errors.As(err, &twerr)
 		assert.True(t, ok)
-		assert.Equal(t, twerr.Code(), twirp.InvalidArgument)
+		assert.Equal(t, twirp.InvalidArgument, twerr.Code())
 	})
 }
 
@@ -256,10 +257,10 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 
 		// Call the API
 		resp, err := server.FetchUsersPrivacyAttributes(ctx, req)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, resp)
-		assert.Equal(t, len(resp.PrivacyAttributes), 1)
-		assert.Equal(t, resp.PrivacyAttributes[0].UserUrn, TestUserUrn)
+		assert.Len(t, resp.PrivacyAttributes, 1)
+		assert.Equal(t, TestUserUrn, resp.PrivacyAttributes[0].UserUrn)
 		assert.False(t, resp.PrivacyAttributes[0].IsMinor)
 	})
 
@@ -274,7 +275,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 
 		// Call the API
 		resp, err := server.FetchUsersPrivacyAttributes(ctx, req)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 		assert.Nil(t, resp)
 	})
 }
@@ -282,7 +283,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 func assertTwirpCode(t *testing.T, err error, want twirp.ErrorCode) {
 	t.Helper()
 	var twerr twirp.Error
-	if assert.True(t, errors.As(err, &twerr), "expected a twirp error, got %v", err) {
+	if assert.ErrorAs(t, err, &twerr, "expected a twirp error, got %v", err) {
 		assert.Equal(t, want, twerr.Code())
 	}
 }

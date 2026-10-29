@@ -31,7 +31,7 @@ func TestRunServesUntilContextCancelled(t *testing.T) {
 	cancel()
 	select {
 	case err := <-done:
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	case <-time.After(5 * time.Second):
 		t.Fatal("server did not stop after context cancellation")
 	}
@@ -39,12 +39,12 @@ func TestRunServesUntilContextCancelled(t *testing.T) {
 
 func TestRunReturnsListenError(t *testing.T) {
 	err := Run(context.Background(), "256.256.256.256:1", http.NotFoundHandler(), slog.New(slog.DiscardHandler))
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func freeAddr(t *testing.T) string {
 	t.Helper()
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	l, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	addr := l.Addr().String()
 	require.NoError(t, l.Close())

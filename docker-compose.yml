@@ -4,13 +4,13 @@ services:
     image: "amazon/dynamodb-local:latest"
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data -port 9000"
     ports:
-      - "9000:9000"
+      - "8900:9000"
     volumes:
       - "./docker/dynamodb/data:/home/dynamodblocal/data"
   dynamodb-setup:
     image: amazon/aws-cli
     ports:
-      - "9001:9001"
+      - "8901:9001"
     environment:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local

@@ -50,7 +50,7 @@ func (c *Client) FetchUsers(ctx context.Context, userUrns []string) ([]User, err
 	if err != nil {
 		return nil, fmt.Errorf("calling user directory: %w", err)
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("user directory returned status %d", res.StatusCode)

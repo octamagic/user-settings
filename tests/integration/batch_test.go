@@ -6,56 +6,43 @@ import (
 
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestBatchOperations(t *testing.T) {
+func TestGetSettingsFiltersByName(t *testing.T) {
 	setupDynamoDB(t)
 	defer cleanupDynamoDB(t)
 
 	ctx := context.Background()
-
-	// Test data
-	userUrn := "soundcloud:users:12345"
-	name1 := "testSetting"
-	name2 := "testSetting2"
-	name3 := "testSetting3"
-	settingType := prefsrepo.SettingTypeBoolean
-	value := `true`
-
-	// Create multiple settings for batch operations
+	userUrn := "urn:user:12345"
 	settings := []prefsrepo.Setting{
-		prefsrepo.NewSetting(userUrn, name1, settingType, value),
-		prefsrepo.NewSetting(userUrn, name2, settingType, value),
-		prefsrepo.NewSetting(userUrn, name3, settingType, value),
+		prefsrepo.NewSetting(userUrn, "first", prefsrepo.SettingTypeBoolean, `true`),
+		prefsrepo.NewSetting(userUrn, "second", prefsrepo.SettingTypeNumber, `2`),
+		prefsrepo.NewSetting(userUrn, "third", prefsrepo.SettingTypeString, `"three"`),
+	}
+	for _, setting := range settings {
+		require.NoError(t, testRepo.PutSetting(ctx, setting))
 	}
 
-	// Test batch creation
-	t.Run("BatchPutSettings", func(t *testing.T) {
-		// Insert all settings in a batch
-		for _, setting := range settings {
-			err := testRepo.PutSetting(ctx, setting)
-			assert.Nil(t, err)
+	t.Run("a subset of names returns only those settings", func(t *testing.T) {
+		fetched, err := testRepo.GetSettings(ctx, userUrn, []string{"first", "third"})
+		require.NoError(t, err)
+		names := make([]string, 0, len(fetched))
+		for _, setting := range fetched {
+			names = append(names, setting.Name)
 		}
-
-		// Verify all settings were created
-		for _, setting := range settings {
-			fetchedSetting, err := testRepo.GetSettings(ctx, userUrn, []string{setting.Name})
-			assert.Nil(t, err)
-			assert.Equal(t, fetchedSetting[0].Name, setting.Name)
-		}
+		assert.ElementsMatch(t, []string{"first", "third"}, names)
 	})
 
-	// Test batch retrieval
-	t.Run("BatchGetSettings", func(t *testing.T) {
-		// Get settings for multiple IDs
-		names := []string{settings[0].Name, settings[1].Name}
+	t.Run("no names returns every setting for the user", func(t *testing.T) {
+		fetched, err := testRepo.GetSettings(ctx, userUrn, nil)
+		require.NoError(t, err)
+		assert.Len(t, fetched, 3)
+	})
 
-		// Note: The repository doesn't have a batch get method yet,
-		// so we'll implement a simple loop as a simulation
-		for _, name := range names {
-			fetchedSetting, err := testRepo.GetSettings(ctx, userUrn, []string{name})
-			assert.Nil(t, err)
-			assert.Equal(t, fetchedSetting[0].Name, name)
-		}
+	t.Run("another user's partition is not visible", func(t *testing.T) {
+		fetched, err := testRepo.GetSettings(ctx, "urn:user:other", nil)
+		require.NoError(t, err)
+		assert.Empty(t, fetched)
 	})
 }

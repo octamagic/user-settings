@@ -10,6 +10,7 @@ import (
 	"github.com/patrickisgreat/user-settings/internal/rulesservice"
 	"github.com/patrickisgreat/user-settings/internal/userdirectory"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -58,7 +59,7 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, setting)
 	})
 
@@ -73,7 +74,7 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, setting)
 	})
 }
@@ -111,7 +112,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, setting)
 	})
 
@@ -126,7 +127,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
 		assert.Nil(t, setting)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("FetchUsersPrivacyAttributes returns error if the directory fails", func(t *testing.T) {
@@ -135,7 +136,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
 		assert.Nil(t, setting)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -158,7 +159,7 @@ func TestFetchUsersPrivacyAttributesFailsClosedWithoutDateOfBirth(t *testing.T) 
 
 			attrs, err := processor.FetchUsersPrivacyAttributes(ctx, []string{"urn:user:1"})
 
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.True(t, attrs[0].IsMinor)
 		})
 	}

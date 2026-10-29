@@ -10,6 +10,7 @@ import (
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
@@ -53,7 +54,7 @@ func TestGetSettings(t *testing.T) {
 		mockRepo.EXPECT().GetSettings(ctx, gomock.Any(), gomock.Any()).Return([]prefsrepo.Setting{*testSetting}, nil)
 
 		setting, err := service.GetSettings(ctx, testUserUrn, []string{testSetting.Name})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, setting)
 		assert.Equal(t, setting[0].Name, testSetting.Name)
 		assert.Equal(t, setting[0].UserUrn, testUserUrn)
@@ -65,7 +66,7 @@ func TestGetSettings(t *testing.T) {
 		mockRepo.EXPECT().GetSettings(ctx, gomock.Any(), []string{name}).Return(nil, errors.New("not existing"))
 
 		_, err := service.GetSettings(ctx, testUserUrn, []string{name})
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 
 	// Test case 3: Get with empty setting IDs
@@ -73,7 +74,7 @@ func TestGetSettings(t *testing.T) {
 		mockRepo.EXPECT().GetSettings(ctx, gomock.Any(), gomock.Any()).Return(nil, errors.New("not existing"))
 
 		_, err := service.GetSettings(ctx, testUserUrn, []string{})
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 
 	// Test case 4: Repository error
@@ -81,7 +82,7 @@ func TestGetSettings(t *testing.T) {
 		mockRepo.EXPECT().GetSettings(ctx, testUserUrn, gomock.Any()).Return(nil, errors.New("mock rules service error"))
 
 		_, err := service.GetSettings(ctx, testUserUrn, []string{testSetting.Name})
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -115,11 +116,11 @@ func TestGetPrivacySettings(t *testing.T) {
 		}, nil)
 
 		usersPrivacySettings, err := service.GetPrivacySettings(ctx, []string{testUserUrn})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, usersPrivacySettings)
-		assert.Equal(t, len(usersPrivacySettings), 1)
+		assert.Len(t, usersPrivacySettings, 1)
 		privacySettings := usersPrivacySettings[0].Settings
-		assert.Equal(t, len(privacySettings), 1)
+		assert.Len(t, privacySettings, 1)
 		assert.Equal(t, privacySettings[0].Name, testSetting.Name)
 		assert.Equal(t, privacySettings[0].UserUrn, testUserUrn)
 	})
@@ -143,12 +144,12 @@ func TestGetPrivacySettings(t *testing.T) {
 		}, nil)
 
 		privacySettings, err := service.GetPrivacySettings(ctx, []string{testUserUrn})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, privacySettings)
-		assert.Equal(t, len(privacySettings), 1)
+		assert.Len(t, privacySettings, 1)
 		assert.Equal(t, privacySettings[0].UserUrn, testUserUrn)
 		assert.Equal(t, privacySettings[0].Settings[0].Name, testSetting.Name)
-		assert.Equal(t, privacySettings[0].Settings[0].Value, "true")
+		assert.Equal(t, "true", privacySettings[0].Settings[0].Value)
 		assert.Equal(t, privacySettings[0].Settings[0].SettingType, testSetting.SettingType)
 	})
 
@@ -171,12 +172,12 @@ func TestGetPrivacySettings(t *testing.T) {
 		}, nil)
 
 		privacySettings, err := service.GetPrivacySettings(ctx, []string{testUserUrn})
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.NotNil(t, privacySettings)
-		assert.Equal(t, len(privacySettings), 1)
+		assert.Len(t, privacySettings, 1)
 		assert.Equal(t, privacySettings[0].UserUrn, testUserUrn)
 		assert.Equal(t, privacySettings[0].Settings[0].Name, testSetting.Name)
-		assert.Equal(t, privacySettings[0].Settings[0].Value, "false")
+		assert.Equal(t, "false", privacySettings[0].Settings[0].Value)
 		assert.Equal(t, privacySettings[0].Settings[0].SettingType, testSetting.SettingType)
 	})
 
@@ -191,8 +192,8 @@ func TestGetPrivacySettings(t *testing.T) {
 		}, nil)
 
 		privacySettings, err := service.GetPrivacySettings(ctx, []string{testUserUrn})
-		assert.Nil(t, err)
-		assert.Len(t, privacySettings, 0)
+		require.NoError(t, err)
+		assert.Empty(t, privacySettings)
 	})
 }
 
@@ -219,7 +220,7 @@ func TestPutSettings(t *testing.T) {
 		mockRepo.EXPECT().PutSetting(ctx, gomock.Any()).Return(nil)
 
 		err := service.PutSetting(ctx, *testSetting)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Invalid JSON value is rejected before reaching the repository", func(t *testing.T) {
@@ -235,7 +236,7 @@ func TestPutSettings(t *testing.T) {
 		mockRepo.EXPECT().PutSetting(ctx, gomock.Any()).Return(errors.New("put failed"))
 
 		err := service.PutSetting(ctx, *testSetting)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -267,7 +268,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 			t.Errorf("Expected no error, got %v", err)
 		}
 
-		assert.Equal(t, len(privacyAttributes), 1)
+		assert.Len(t, privacyAttributes, 1)
 	})
 
 	t.Run("Returns error if error happen", func(t *testing.T) {
@@ -276,7 +277,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		privacyAttributes, err := service.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 
 		assert.Nil(t, privacyAttributes)
-		assert.NotNil(t, err)
+		require.Error(t, err)
 	})
 
 }

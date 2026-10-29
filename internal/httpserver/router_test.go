@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,7 @@ func TestHealthCheckRoute(t *testing.T) {
 	addHealthCheckRoute(router)
 
 	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/-/health", nil))
+	router.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/-/health", nil))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "OK", rec.Body.String())

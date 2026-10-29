@@ -64,7 +64,7 @@ func TestAgeFromDateOfBirth(t *testing.T) {
 
 	t.Run("unknown date of birth is age zero with an error", func(t *testing.T) {
 		age, err := ageFromDateOfBirth(nil, now)
-		assert.ErrorIs(t, err, errUnknownDateOfBirth)
+		require.ErrorIs(t, err, errUnknownDateOfBirth)
 		assert.Equal(t, 0, age)
 	})
 

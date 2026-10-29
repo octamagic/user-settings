@@ -8,6 +8,7 @@ import (
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSettingConversion(t *testing.T) {
@@ -31,7 +32,7 @@ func TestSettingConversion(t *testing.T) {
 		assert.Equal(t, protoSetting.UserUrn, repoSetting.UserUrn)
 		assert.Equal(t, protoSetting.UpdatedAt, repoSetting.UpdatedAt.Unix())
 		assert.Equal(t, protoSetting.Name, repoSetting.Name)
-		assert.Equal(t, protoSetting.Type, proto.SettingType_BOOLEAN)
+		assert.Equal(t, proto.SettingType_BOOLEAN, protoSetting.Type)
 		assert.Equal(t, protoSetting.Value, repoSetting.Value)
 	})
 
@@ -45,7 +46,7 @@ func TestSettingConversion(t *testing.T) {
 
 		protoAttributes := mapper.MapPrivacyAttributes(privacyAttributes)
 
-		assert.Equal(t, len(privacyAttributes), len(protoAttributes))
+		assert.Len(t, protoAttributes, len(privacyAttributes))
 		assert.Equal(t, privacyAttributes[0].UserUrn, protoAttributes[0].UserUrn)
 		assert.Equal(t, privacyAttributes[0].IsMinor, protoAttributes[0].IsMinor)
 	})
@@ -76,7 +77,7 @@ func TestSettingTypeRoundTrip(t *testing.T) {
 	for _, protoType := range []proto.SettingType{proto.SettingType_STRING, proto.SettingType_BOOLEAN, proto.SettingType_NUMBER} {
 		t.Run(protoType.String(), func(t *testing.T) {
 			code, err := settingTypeFromProto(protoType)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, protoType, mapper.settingTypeToProto(code))
 		})
 	}
