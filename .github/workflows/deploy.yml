@@ -1,0 +1,102 @@
+# Build the image, push it to ECR and roll the ECS service, built from actions-toolkit.
+#
+# A push to main deploys dev. Staging and production are deployed by hand from the
+# Actions tab (workflow_dispatch), each behind its own GitHub Environment, so put
+# required reviewers on "production" there.
+#
+# Authentication is GitHub OIDC against the per-environment deploy role that
+# terraform/modules/service creates (output ci_role_arn). Store each role ARN as a
+# repository variable: AWS_DEPLOY_ROLE_ARN_DEV, _STAGING, _PRODUCTION, plus
+# AWS_REGION and AWS_ACCOUNT_ID. Nothing runs until the role for the target
+# environment is set, so forks and fresh clones stay green.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['terraform/**', 'docs/**', '**.md']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [dev, staging, production]
+        default: dev
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve target
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.pick.outputs.environment }}
+      role_arn: ${{ steps.pick.outputs.role_arn }}
+      registry_host: ${{ steps.pick.outputs.registry_host }}
+    steps:
+      - id: pick
+        env:
+          ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+          ROLE_DEV: ${{ vars.AWS_DEPLOY_ROLE_ARN_DEV }}
+          ROLE_STAGING: ${{ vars.AWS_DEPLOY_ROLE_ARN_STAGING }}
+          ROLE_PRODUCTION: ${{ vars.AWS_DEPLOY_ROLE_ARN_PRODUCTION }}
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          case "$ENVIRONMENT" in
+            dev)        role="$ROLE_DEV" ;;
+            staging)    role="$ROLE_STAGING" ;;
+            production) role="$ROLE_PRODUCTION" ;;
+            *) echo "::error::unknown environment '$ENVIRONMENT'"; exit 1 ;;
+          esac
+          if [ -z "$role" ]; then
+            echo "::notice::AWS_DEPLOY_ROLE_ARN_${ENVIRONMENT^^} is not set; skipping the deploy."
+          fi
+          {
+            echo "environment=$ENVIRONMENT"
+            echo "role_arn=$role"
+            echo "registry_host=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          } >> "$GITHUB_OUTPUT"
+
+  image:
+    name: Build and push image
+    needs: resolve
+    if: needs.resolve.outputs.role_arn != ''
+    uses: patrickisgreat/actions-toolkit/.github/workflows/docker-build.yml@v0
+    with:
+      registry: ecr
+      registry-host: ${{ needs.resolve.outputs.registry_host }}
+      image: user-settings
+      platforms: linux/amd64
+      aws-region: ${{ vars.AWS_REGION }}
+      aws-role-to-assume: ${{ needs.resolve.outputs.role_arn }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+  deploy:
+    name: Roll ECS service
+    needs: [resolve, image]
+    uses: patrickisgreat/actions-toolkit/.github/workflows/deploy-aws.yml@v0
+    with:
+      target: ecs
+      aws-region: ${{ vars.AWS_REGION }}
+      aws-role-to-assume: ${{ needs.resolve.outputs.role_arn }}
+      cluster: user-settings-${{ needs.resolve.outputs.environment }}
+      service: user-settings-${{ needs.resolve.outputs.environment }}
+      container-name: app
+      # The digest, not a tag: tags are mutable and can move before the deploy runs.
+      image: ${{ needs.image.outputs.image-digest-ref }}
+      environment-name: ${{ needs.resolve.outputs.environment }}
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write

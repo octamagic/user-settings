@@ -1,0 +1,72 @@
+# Infrastructure pipeline for terraform/, built from actions-toolkit.
+#
+#   checks  fmt, validate every root and the composition module, tflint, trivy
+#   plan    on pull requests: plan every environment, comment the diff on the PR
+#   apply   on merge to main: apply the reviewed plans, serialised, behind the
+#           "infrastructure" GitHub Environment (put approval rules there)
+#
+# plan/apply only run once these repository variables exist:
+#   AWS_REGION, AWS_TERRAFORM_ROLE_ARN (OIDC role with rights to manage the stack),
+#   TF_STATE_BUCKET
+# and the TF_SECRET_VARS secret carries the per-environment inputs
+# (vpc_id, subnet ids, user_directory_base_url, ...). See docs/development.md.
+
+name: Terraform
+
+on:
+  push:
+    branches: [main]
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
+  pull_request:
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-ci.yml@v0
+    with:
+      directories: terraform
+      docs-check: false
+
+  plan:
+    if: github.event_name == 'pull_request' && vars.AWS_TERRAFORM_ROLE_ARN != ''
+    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
+    with:
+      mode: plan
+      # Every environment, always: a change to terraform/modules/service affects all
+      # of them, which diff-based discovery would miss.
+      directories: '["terraform/environments/dev","terraform/environments/staging","terraform/environments/production"]'
+      aws-region: ${{ vars.AWS_REGION }}
+      aws-role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+      backend-config: |
+        bucket=${{ vars.TF_STATE_BUCKET }}
+        region=${{ vars.AWS_REGION }}
+        use_lockfile=true
+        encrypt=true
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+
+  apply:
+    if: github.event_name == 'push' && vars.AWS_TERRAFORM_ROLE_ARN != ''
+    uses: patrickisgreat/actions-toolkit/.github/workflows/terraform-plan-apply.yml@v0
+    with:
+      mode: both
+      directories: '["terraform/environments/dev","terraform/environments/staging","terraform/environments/production"]'
+      environment-name: infrastructure
+      aws-region: ${{ vars.AWS_REGION }}
+      aws-role-to-assume: ${{ vars.AWS_TERRAFORM_ROLE_ARN }}
+      backend-config: |
+        bucket=${{ vars.TF_STATE_BUCKET }}
+        region=${{ vars.AWS_REGION }}
+        use_lockfile=true
+        encrypt=true
+    secrets: inherit
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
