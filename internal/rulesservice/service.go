@@ -1,7 +1,8 @@
+//go:generate mockgen -source=service.go -destination=mock_service.go -package=rulesservice
 package rulesservice
 
 import (
-	"github.com/soundcloud/user-settings/internal/regionalrulesrepo"
+	"github.com/patrickisgreat/user-settings/internal/regionalrulesrepo"
 )
 
 type RuleApplication int

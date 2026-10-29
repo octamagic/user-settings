@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundcloud/gokit/v2/clients/okidoki"
-	"github.com/soundcloud/user-settings/internal/rulesservice"
+	"github.com/patrickisgreat/user-settings/internal/userdirectory"
+	"github.com/patrickisgreat/user-settings/internal/rulesservice"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -17,11 +17,11 @@ func TestGetSettings(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockOkidokiClient := NewMockOkidokiClient(ctrl)
+	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
 	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockOkidokiClient, mockRulesService, mockClock, mockSettingsRepo)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
 
 	// Test context
 	ctx := context.Background()
@@ -31,17 +31,15 @@ func TestGetSettings(t *testing.T) {
 	testUserCountryCode := "US"
 	testUserDateOfBirth := "2000/01/01"
 	testDate := time.Now()
-	okidokiResponse := okidoki.OkidokiRawResponse{
-		Self: okidoki.Self{
-			URN: testUserUrn,
-		},
+	directoryUser := userdirectory.User{
+		URN: testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}
 
 	t.Run("ProcessMinorProtectionSettings returns setting for user", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponse,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUser,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -55,8 +53,8 @@ func TestGetSettings(t *testing.T) {
 	})
 
 	t.Run("ProcessMinorProtectionSettings returns error if setting creation failed", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponse,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUser,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -70,8 +68,8 @@ func TestGetSettings(t *testing.T) {
 	})
 
 	t.Run("ProcessMinorProtectionSettings returns error if rules returned error", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponse,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUser,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -83,8 +81,8 @@ func TestGetSettings(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	t.Run("ProcessMinorProtectionSettings returns error if okidoki did not return users", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return(nil, errors.New("okidoki error"))
+	t.Run("ProcessMinorProtectionSettings returns error if the directory did not return users", func(t *testing.T) {
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return(nil, errors.New("directory error"))
 
 		setting, err := processor.ProcessMinorProtectionSettings(ctx, []string{testUserUrn})
 
@@ -97,11 +95,11 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockOkidokiClient := NewMockOkidokiClient(ctrl)
+	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
 	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockOkidokiClient, mockRulesService, mockClock, mockSettingsRepo)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
 
 	// Test context
 	ctx := context.Background()
@@ -115,18 +113,14 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	testUserCountryCode := "US"
 	testUserDateOfBirth := fmt.Sprintf("%d/%d/%d", eighteenYearsAgo.Year(), eighteenYearsAgo.Month(), eighteenYearsAgo.Day())
 	testUserDateOfBirth2 := fmt.Sprintf("%d/%d/%d", eighteenYearsAgoMinusMonth.Year(), eighteenYearsAgoMinusMonth.Month(), eighteenYearsAgoMinusMonth.Day())
-	okidokiResponseEighteen := okidoki.OkidokiRawResponse{
-		Self: okidoki.Self{
-			URN: testUserUrn,
-		},
+	directoryUserEighteen := userdirectory.User{
+		URN: testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}
 
-	okidokiResponseEighteenMinusMonth := okidoki.OkidokiRawResponse{
-		Self: okidoki.Self{
-			URN: testUserUrn,
-		},
+	directoryUserEighteenMinusMonth := userdirectory.User{
+		URN: testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth2,
 	}
@@ -134,8 +128,8 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	t.Run("Restrict user Age if DOB is 18 years ago", func(t *testing.T) {
 		const ExpectedSeventeen = 17
 
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponseEighteen,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUserEighteen,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -149,8 +143,8 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 
 	t.Run("Not Restrict user Age if DOB is 18 years ago + 1 month", func(t *testing.T) {
 		const ExpectedEighteen = 18
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponseEighteenMinusMonth,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUserEighteenMinusMonth,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -167,11 +161,11 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockOkidokiClient := NewMockOkidokiClient(ctrl)
+	mockUserDirectory := NewMockUserDirectory(ctrl)
 	mockRulesService := NewMockRulesService(ctrl)
 	mockClock := NewMockClock(ctrl)
 	mockSettingsRepo := NewMockSettingsRepository(ctrl)
-	processor := NewMinorSettingProcessor(mockOkidokiClient, mockRulesService, mockClock, mockSettingsRepo)
+	processor := NewMinorSettingProcessor(mockUserDirectory, mockRulesService, mockClock, mockSettingsRepo)
 
 	// Test context
 	ctx := context.Background()
@@ -181,17 +175,15 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	testUserCountryCode := "US"
 	testUserDateOfBirth := "2000/01/01"
 	testDate := time.Now()
-	okidokiResponse := okidoki.OkidokiRawResponse{
-		Self: okidoki.Self{
-			URN: testUserUrn,
-		},
+	directoryUser := userdirectory.User{
+		URN: testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}
 
 	t.Run("FetchUsersPrivacyAttributes returns user attributes", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponse,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUser,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -204,8 +196,8 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	})
 
 	t.Run("FetchUsersPrivacyAttributes returns error if rulesService fails", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]okidoki.OkidokiRawResponse{
-			okidokiResponse,
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return([]userdirectory.User{
+			directoryUser,
 		}, nil)
 
 		mockClock.EXPECT().Now().Return(testDate)
@@ -217,8 +209,8 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		assert.NotNil(t, err)
 	})
 
-	t.Run("FetchUsersPrivacyAttributes returns error if okidoki fails", func(t *testing.T) {
-		mockOkidokiClient.EXPECT().FetchUsers(ctx, gomock.Any()).Return(nil, errors.New("error"))
+	t.Run("FetchUsersPrivacyAttributes returns error if the directory fails", func(t *testing.T) {
+		mockUserDirectory.EXPECT().FetchUsers(ctx, gomock.Any()).Return(nil, errors.New("error"))
 
 		setting, err := processor.FetchUsersPrivacyAttributes(ctx, []string{testUserUrn})
 

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	proto "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
-	"github.com/soundcloud/user-settings/internal/prefsservice/domain"
+	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
 )
 

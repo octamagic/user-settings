@@ -3,10 +3,10 @@
     {
       "request": {
         "method": "GET",
-        "urlPath": "/users/fetch",
+        "urlPath": "/users",
         "queryParameters": {
           "urns": {
-            "contains": "soundcloud:users:2"
+            "contains": "urn:user:2"
           }
         }
       },

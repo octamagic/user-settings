@@ -1,3 +1,4 @@
+//go:generate mockgen -source=repository.go -destination=mock_repository.go -package=prefsrepo
 package prefsrepo
 
 import (
@@ -8,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	ex "github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	db "github.com/soundcloud/user-settings/pkg/dynamodb"
+	db "github.com/patrickisgreat/user-settings/pkg/dynamodb"
 )
 
 type SettingsRepository interface {

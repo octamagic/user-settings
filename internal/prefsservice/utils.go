@@ -1,7 +1,7 @@
 package prefsservice
 
 import (
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 )
 
 func GetUnmatchedUserUrns(userUrns []string, settings []prefsrepo.Setting) []string {

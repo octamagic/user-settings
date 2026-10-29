@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 ENDPOINT_URL=${ENDPOINT_URL:-http://dynamodb-local:9000}
-REGION=${REGION:-eu-central-1}
+REGION=${REGION:-us-east-1}
 USER_SETTINGS_TABLE_NAME=${USER_SETTINGS_TABLE_NAME:-user-settings-user-settings}
 
 # Wait for DynamoDB Local to be available for setup.

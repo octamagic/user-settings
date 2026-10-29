@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
-	"github.com/soundcloud/user-settings/internal/appserver"
-	"github.com/soundcloud/user-settings/internal/config"
+	"github.com/patrickisgreat/user-settings/internal/appserver"
+	"github.com/patrickisgreat/user-settings/internal/config"
 )
 
 func ClearTables() {

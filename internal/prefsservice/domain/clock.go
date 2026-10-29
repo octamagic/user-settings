@@ -1,3 +1,4 @@
+//go:generate mockgen -source=clock.go -destination=mock_clock.go -package=domain
 package domain
 
 import "time"

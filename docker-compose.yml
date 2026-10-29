@@ -15,7 +15,7 @@ services:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
     entrypoint: ["/dynamodb-setup-entrypoint.sh"]
-    command: dynamodb list-tables --endpoint-url http://dynamodb-local:9000 --region eu-central-1
+    command: dynamodb list-tables --endpoint-url http://dynamodb-local:9000 --region us-east-1
     depends_on:
       - dynamodb-local
     volumes:
@@ -26,20 +26,10 @@ services:
       - "8001:8001"
     environment:
       DYNAMO_ENDPOINT: "http://dynamodb-local:9000"
-      AWS_REGION: eu-central-1
+      AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
     depends_on:
       - dynamodb-local
-  localstack:
-    image: localstack/localstack:latest
-    environment:
-      - SERVICES=sqs
-      - AWS_DEFAULT_REGION=eu-central-1
-    ports:
-      - '127.0.0.1:4566:4566'
-    volumes:
-      - "./docker/localstack/setup-entrypoint.sh:/etc/localstack/init/ready.d/start-localstack.sh"
-
 networks:
   user-settings-local:

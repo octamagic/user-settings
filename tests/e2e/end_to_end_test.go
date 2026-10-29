@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundcloud/gokit/v2/logger"
-	"github.com/soundcloud/user-settings/tests/dbutils"
+	"github.com/patrickisgreat/user-settings/internal/logging"
+	"github.com/patrickisgreat/user-settings/tests/dbutils"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/wiremock/wiremock-testcontainers-go" //nolint:goimports
@@ -20,14 +20,14 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 
 	dynamodb := setupDynamoDBInTestcontainers(ctx)
-	okidoki := setupWiremockContainer(ctx)
+	userDirectory := setupWiremockContainer(ctx)
 
 	defer func() {
 		if err := testcontainers.TerminateContainer(dynamodb); err != nil {
 			fmt.Printf("Error terminating DynamoDB container: %v\n", err)
 		}
-		if err := testcontainers.TerminateContainer(okidoki); err != nil {
-			fmt.Printf("Error terminating Okidoki container: %v\n", err)
+		if err := testcontainers.TerminateContainer(userDirectory); err != nil {
+			fmt.Printf("Error terminating user directory container: %v\n", err)
 		}
 	}()
 
@@ -42,8 +42,8 @@ func TestMain(m *testing.M) {
 
 func setupWiremockContainer(ctx context.Context) testcontainers.Container {
 	wiremockContainer, _ := testcontainers_wiremock.RunContainer(ctx,
-		testcontainers_wiremock.WithMappingFile("okidoki", filepath.Join("wiremock", "okidoki", "mappings", "okidoki.json")),
-		testcontainers_wiremock.WithFile("user2.json", filepath.Join("wiremock", "okidoki", "__files", "user2.json")),
+		testcontainers_wiremock.WithMappingFile("userdirectory", filepath.Join("wiremock", "userdirectory_mappings.json")),
+		testcontainers_wiremock.WithFile("user2.json", filepath.Join("wiremock", "user2.json")),
 	)
 
 	endpoint, endpointErr := wiremockContainer.Endpoint(ctx, "")
@@ -52,10 +52,10 @@ func setupWiremockContainer(ctx context.Context) testcontainers.Container {
 		os.Exit(1)
 	}
 
-	okidokiEndpoint := fmt.Sprintf("http://%s", endpoint)
-	fmt.Println("baseURL for okidoki: ", okidokiEndpoint)
-	if err := os.Setenv("OKIDOKI_BASE_URL", okidokiEndpoint); err != nil {
-		fmt.Println("Error setting OKIDOKI_BASE_URL environment variable:", err)
+	userDirectoryEndpoint := fmt.Sprintf("http://%s", endpoint)
+	fmt.Println("user directory base URL: ", userDirectoryEndpoint)
+	if err := os.Setenv("USER_DIRECTORY_BASE_URL", userDirectoryEndpoint); err != nil {
+		fmt.Println("Error setting USER_DIRECTORY_BASE_URL environment variable:", err)
 		os.Exit(1)
 	}
 
@@ -89,7 +89,7 @@ func setupDynamoDBInTestcontainers(ctx context.Context) testcontainers.Container
 
 func createTestTables(ctx context.Context) {
 	if err := dbutils.CreateTables(); err != nil {
-		logger.Get(ctx).Error("Error creating database:", slog.Any("err", err))
+		logging.FromContext(ctx).Error("Error creating database:", slog.Any("err", err))
 		os.Exit(1)
 	}
 }

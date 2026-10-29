@@ -1,3 +1,4 @@
+//go:generate mockgen -source=repository.go -destination=mock_repository.go -package=regionalrulesrepo
 package regionalrulesrepo
 
 type RegionalRulesRepository interface {

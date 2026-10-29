@@ -1,8 +1,6 @@
 [
   {
-    "self": {
-      "urn": "soundcloud:users:2"
-    },
+    "urn": "urn:user:2",
     "date_of_birth": "1986/12/01",
     "country_code": "GB"
   }

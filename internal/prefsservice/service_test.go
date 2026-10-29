@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
-	"github.com/soundcloud/user-settings/internal/prefsrepo/definitions"
-	"github.com/soundcloud/user-settings/internal/prefsservice/domain"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
+	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -35,10 +35,10 @@ func TestGetSettings(t *testing.T) {
 	// Create mock repository
 	mockRepo := NewMockSettingsRepository(ctrl)
 	rulesService := domain.NewMockRulesService(ctrl)
-	okidokiClient := domain.NewMockOkidokiClient(ctrl)
+	userDirectory := domain.NewMockUserDirectory(ctrl)
 	settingsDefinitionRepo := definitions.NewMockRepository(ctrl)
 
-	minorSettingProcessor := domain.NewMinorSettingProcessor(okidokiClient, rulesService, &domain.DefaultClock{}, mockRepo)
+	minorSettingProcessor := domain.NewMinorSettingProcessor(userDirectory, rulesService, &domain.DefaultClock{}, mockRepo)
 	service := NewSettingsService(mockRepo, minorSettingProcessor, settingsDefinitionRepo)
 
 	// Test context

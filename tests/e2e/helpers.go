@@ -10,13 +10,14 @@ import (
 	"testing"
 
 	"github.com/bakins/twirpotel"
-	common "github.com/soundcloud/gokit/v2/twirp/common_session"
-	"github.com/soundcloud/user-settings/internal/api"
-	"github.com/soundcloud/user-settings/internal/appserver"
-	"github.com/soundcloud/user-settings/internal/config"
-	proto "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
-	"github.com/soundcloud/user-settings/internal/handlers"
-	"github.com/soundcloud/user-settings/internal/mappers"
+	common "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
+	"github.com/patrickisgreat/user-settings/internal/api"
+	"github.com/patrickisgreat/user-settings/internal/appserver"
+	"github.com/patrickisgreat/user-settings/internal/config"
+	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/patrickisgreat/user-settings/internal/handlers"
+	"github.com/patrickisgreat/user-settings/internal/logging"
+	"github.com/patrickisgreat/user-settings/internal/mappers"
 	"github.com/stretchr/testify/assert"
 	"github.com/twitchtv/twirp"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -34,7 +35,7 @@ func startServer() context.CancelFunc {
 		&handlers.UserSettingsService{},
 		twirp.WithServerInterceptors(twirpotel.ServerInterceptor()),
 	)
-	router := appserver.NewRouter(&ras)
+	router := appserver.NewRouter(&ras, logging.New(config.Config.LogLevel, config.Config.LogPretty))
 	addr := net.JoinHostPort(config.Config.Host, fmt.Sprintf("%d", config.Config.Port))
 	go appserver.Start(ctx, &appserver.StartParams{
 		Router: router,
@@ -44,7 +45,7 @@ func startServer() context.CancelFunc {
 }
 
 func sendRequest(t *testing.T, method string, reqBody pbproto.Message) *http.Response {
-	baseURL := fmt.Sprintf("http://%s:%d/twirp/proto.soundcloud.user_settings.api.", config.Config.Host, config.Config.Port)
+	baseURL := fmt.Sprintf("http://%s:%d/twirp/usersettings.v1.", config.Config.Host, config.Config.Port)
 	reqBytes, err := protojson.Marshal(reqBody)
 	if err != nil {
 		t.Fatalf("Failed to marshal request body: %v", err)

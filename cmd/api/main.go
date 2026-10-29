@@ -3,15 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net"
 
 	"github.com/bakins/twirpotel"
-	api "github.com/soundcloud/user-settings/internal/api"
-	"github.com/soundcloud/user-settings/internal/appserver"
-	"github.com/soundcloud/user-settings/internal/config"
-	genapi "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
-	"github.com/soundcloud/user-settings/internal/handlers"
-	"github.com/soundcloud/user-settings/internal/mappers"
+	api "github.com/patrickisgreat/user-settings/internal/api"
+	"github.com/patrickisgreat/user-settings/internal/appserver"
+	"github.com/patrickisgreat/user-settings/internal/config"
+	genapi "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/patrickisgreat/user-settings/internal/handlers"
+	"github.com/patrickisgreat/user-settings/internal/logging"
+	"github.com/patrickisgreat/user-settings/internal/mappers"
 	"github.com/twitchtv/twirp"
 )
 
@@ -20,6 +22,10 @@ func main() {
 
 	// Initialize the app context (which sets up DynamoDB client, repository, and service)
 	appserver.InitContext(ctx)
+
+	logger := logging.New(config.Config.LogLevel, config.Config.LogPretty)
+	slog.SetDefault(logger)
+	ctx = logging.WithContext(ctx, logger)
 
 	// Initialize the API with the service from the context
 	api.InitService(appserver.Context().UserSettingsService, mappers.ProtoMapper{})
@@ -30,7 +36,7 @@ func main() {
 		twirp.WithServerInterceptors(twirpotel.ServerInterceptor()),
 	)
 
-	router := appserver.NewRouter(&ras)
+	router := appserver.NewRouter(&ras, logger)
 
 	appserver.Start(ctx, &appserver.StartParams{
 		Router: router,

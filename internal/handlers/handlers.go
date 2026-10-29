@@ -3,8 +3,8 @@ package handlers
 import (
 	"context"
 
-	"github.com/soundcloud/user-settings/internal/api"
-	proto "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
+	"github.com/patrickisgreat/user-settings/internal/api"
+	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
 )
 
 type UserSettingsService struct{}

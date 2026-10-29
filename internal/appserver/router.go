@@ -2,20 +2,21 @@ package appserver
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 
-	"github.com/soundcloud/gokit/v2/logger"
-	"github.com/soundcloud/user-settings/internal/generated/user_settings/api"
+	api "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/patrickisgreat/user-settings/internal/logging"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-func NewRouter(s *api.TwirpServer) *http.ServeMux {
+func NewRouter(s *api.TwirpServer, logger *slog.Logger) *http.ServeMux {
 	router := http.NewServeMux()
 	router.Handle(
 		(*s).PathPrefix(),
 		otelhttp.NewHandler(
-			logger.NewLogMiddleware("UserPreferences")(*s),
-			"UserPreferences",
+			logging.Middleware(logger)(*s),
+			"UserSettings",
 			otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
 		),
 	)

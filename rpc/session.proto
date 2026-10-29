@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package usersettings.common.v1;
+
+import "google/protobuf/wrappers.proto";
+
+option go_package = "github.com/patrickisgreat/user-settings/internal/generated/common/v1;commonv1";
+
+// Geo is the geographic location of the caller, determined from IP geolocation.
+message Geo {
+  // Two-letter country code, or '--' if unknown.
+  string country_code = 1;
+  google.protobuf.StringValue city = 2;
+  google.protobuf.StringValue region = 3;
+}
+
+// UserSession carries metadata about the authenticated caller of a request.
+message UserSession {
+  // URN of the user making the request.
+  google.protobuf.StringValue user_urn = 1;
+  // URN of the client application used for this session.
+  google.protobuf.StringValue agent_urn = 2;
+  // Geographic location of the user.
+  Geo geo = 3;
+  // OAuth scopes granted to this session.
+  repeated string scopes = 4;
+  // Business features enabled for this session.
+  repeated string features = 5;
+}

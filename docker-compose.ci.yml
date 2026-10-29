@@ -17,7 +17,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=local
       - ENDPOINT_URL=http://dynamodb-local-ci:9000
     entrypoint: ["/dynamodb-setup-entrypoint.sh"]
-    command: dynamodb list-tables --endpoint-url http://dynamodb-local-ci:9000 --region eu-central-1
+    command: dynamodb list-tables --endpoint-url http://dynamodb-local-ci:9000 --region us-east-1
     depends_on:
       - dynamodb-local-ci
     volumes:

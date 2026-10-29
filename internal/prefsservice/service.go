@@ -1,3 +1,4 @@
+//go:generate mockgen -source=service.go -destination=mock_service.go -package=prefsservice
 package prefsservice
 
 import (
@@ -8,10 +9,10 @@ import (
 	"slices"
 	"time"
 
-	"github.com/soundcloud/gokit/v2/logger"
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
-	"github.com/soundcloud/user-settings/internal/prefsrepo/definitions"
-	"github.com/soundcloud/user-settings/internal/prefsservice/domain"
+	"github.com/patrickisgreat/user-settings/internal/logging"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
+	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 )
 
 type SettingsRepository interface {
@@ -66,7 +67,7 @@ func (s *settingsService) GetPrivacySettings(ctx context.Context, userUrns []str
 	privacySettingNames := s.settingsDefinitionRepo.GetPrivacySettingsNames()
 	usersAttributes, err := s.minorSettingProcessor.FetchUsersPrivacyAttributes(ctx, userUrns)
 	if err != nil {
-		logger.Get(ctx).Warn("missing minor attributes for the users")
+		logging.FromContext(ctx).Warn("missing minor attributes for the users")
 	}
 
 	// this needs to be parallel ???
@@ -74,7 +75,7 @@ func (s *settingsService) GetPrivacySettings(ctx context.Context, userUrns []str
 	for _, userUrn := range userUrns {
 		var settings, err = s.settingsRepo.GetSettings(ctx, userUrn, privacySettingNames)
 		if err != nil {
-			logger.Get(ctx).Warn("missing privacy settings for the user: ", slog.String("userUrn", userUrn))
+			logging.FromContext(ctx).Warn("missing privacy settings for the user: ", slog.String("userUrn", userUrn))
 			continue
 		}
 
@@ -86,7 +87,7 @@ func (s *settingsService) GetPrivacySettings(ctx context.Context, userUrns []str
 			}
 		}
 		if userAttribute == nil {
-			logger.Get(ctx).Warn("missing userPrivacy attributes for user: ", slog.String("userUrn", userUrn))
+			logging.FromContext(ctx).Warn("missing userPrivacy attributes for user: ", slog.String("userUrn", userUrn))
 			continue
 		}
 
@@ -128,7 +129,7 @@ func (s *settingsService) settingsFromDefaults(ctx context.Context, missingSetti
 	for _, missingSettingName := range missingSettingNames {
 		settingDefinition, err := s.settingsDefinitionRepo.GetDefinition(missingSettingName)
 		if err != nil {
-			logger.Get(ctx).Warn("missing privacy setting definition: ", slog.String("settingName", missingSettingName))
+			logging.FromContext(ctx).Warn("missing privacy setting definition: ", slog.String("settingName", missingSettingName))
 			continue
 		}
 

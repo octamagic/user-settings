@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/soundcloud/gokit/v2/logger"
+	"github.com/patrickisgreat/user-settings/internal/logging"
 )
 
 const Ten time.Duration = 10 * time.Second
@@ -21,7 +21,7 @@ type StartParams struct {
 }
 
 func Start(ctx context.Context, sp *StartParams) {
-	log := logger.Get(ctx)
+	log := logging.FromContext(ctx)
 
 	if appctx == nil {
 		err := errors.New("server context must be initialized before start")

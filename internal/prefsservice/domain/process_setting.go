@@ -1,3 +1,4 @@
+//go:generate mockgen -source=process_setting.go -destination=mock_process_setting.go -package=domain
 package domain
 
 import (
@@ -7,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/soundcloud/gokit/v2/clients/okidoki"
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
-	"github.com/soundcloud/user-settings/internal/rulesservice"
+	"github.com/patrickisgreat/user-settings/internal/userdirectory"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/rulesservice"
 )
 
-type OkidokiClient interface {
-	FetchUsers(ctx context.Context, userUrns []string) ([]okidoki.OkidokiRawResponse, error)
+type UserDirectory interface {
+	FetchUsers(ctx context.Context, userUrns []string) ([]userdirectory.User, error)
 }
 
 type RulesService interface {
@@ -30,7 +31,7 @@ type UserPrivacyAttributes struct {
 }
 
 type minorSettingsProcessor struct {
-	okidokiClient OkidokiClient
+	userDirectory UserDirectory
 	rulesService  RulesService
 	clock         Clock
 	settingsRepo  SettingsRepository
@@ -41,9 +42,9 @@ type MinorSettingProcessor interface {
 	FetchUsersPrivacyAttributes(ctx context.Context, userUrns []string) ([]UserPrivacyAttributes, error)
 }
 
-func NewMinorSettingProcessor(okidokiClient OkidokiClient, rulesService RulesService, clock Clock, settingsRepo SettingsRepository) MinorSettingProcessor {
+func NewMinorSettingProcessor(userDirectory UserDirectory, rulesService RulesService, clock Clock, settingsRepo SettingsRepository) MinorSettingProcessor {
 	return &minorSettingsProcessor{
-		okidokiClient: okidokiClient,
+		userDirectory: userDirectory,
 		rulesService:  rulesService,
 		clock:         clock,
 		settingsRepo:  settingsRepo,
@@ -54,25 +55,25 @@ func (m *minorSettingsProcessor) ProcessMinorProtectionSettings(ctx context.Cont
 	[]prefsrepo.Setting,
 	error,
 ) {
-	okidokiResponse, err := m.okidokiClient.FetchUsers(ctx, userUrns)
+	directoryUsers, err := m.userDirectory.FetchUsers(ctx, userUrns)
 	if err != nil {
 		return nil, err
 	}
 
-	// Search for the user in okidokiResponse
-	okidokiUsers, err := findUsersInOkidokiResponse(okidokiResponse, userUrns)
+	// Match the requested URNs against the directory response
+	users, err := findUsers(directoryUsers, userUrns)
 	if err != nil {
 		return nil, err
 	}
 
 	var settings []prefsrepo.Setting
 
-	for _, okidokiUser := range okidokiUsers {
-		ruleForUser, err := getRulesForUser(okidokiUser, m.clock, m.rulesService)
+	for _, user := range users {
+		ruleForUser, err := getRulesForUser(user, m.clock, m.rulesService)
 		if err != nil {
 			return nil, err
 		}
-		tempSetting, err := createSettingWithRule(ctx, okidokiUser.Self.URN, ruleForUser, m.settingsRepo)
+		tempSetting, err := createSettingWithRule(ctx, user.URN, ruleForUser, m.settingsRepo)
 		if err != nil {
 			return nil, err
 		}
@@ -83,27 +84,27 @@ func (m *minorSettingsProcessor) ProcessMinorProtectionSettings(ctx context.Cont
 }
 
 func (m *minorSettingsProcessor) FetchUsersPrivacyAttributes(ctx context.Context, userUrns []string) ([]UserPrivacyAttributes, error) {
-	okidokiResponse, err := m.okidokiClient.FetchUsers(ctx, userUrns)
+	directoryUsers, err := m.userDirectory.FetchUsers(ctx, userUrns)
 	if err != nil {
 		return nil, err
 	}
 
-	// Search for the user in okidokiResponse
-	okidokiUsers, err := findUsersInOkidokiResponse(okidokiResponse, userUrns)
+	// Match the requested URNs against the directory response
+	users, err := findUsers(directoryUsers, userUrns)
 	if err != nil {
 		return nil, err
 	}
 
 	var privacyAttributes []UserPrivacyAttributes
 
-	for _, okidokiUser := range okidokiUsers {
-		ruleForUser, err := getRulesForUser(okidokiUser, m.clock, m.rulesService)
+	for _, user := range users {
+		ruleForUser, err := getRulesForUser(user, m.clock, m.rulesService)
 		if err != nil {
 			return nil, err
 		}
 
 		privacyAttributes = append(privacyAttributes, UserPrivacyAttributes{
-			UserUrn: okidokiUser.Self.URN,
+			UserUrn: user.URN,
 			IsMinor: rulesservice.ApplyRestriction == ruleForUser,
 		})
 	}
@@ -140,12 +141,12 @@ func mapDateOfBirth(rawDateOfBirth *string) (time.Time, error) {
 	return time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC), nil
 }
 
-func getRulesForUser(okidokiUser okidoki.OkidokiRawResponse, clock Clock, rulesService RulesService) (rulesservice.RuleApplication, error) {
-	age := calculateAgeFromDateOfBirth(okidokiUser.DateOfBirth, clock)
+func getRulesForUser(user userdirectory.User, clock Clock, rulesService RulesService) (rulesservice.RuleApplication, error) {
+	age := calculateAgeFromDateOfBirth(user.DateOfBirth, clock)
 
 	country := ""
-	if okidokiUser.CountryCode != nil {
-		country = *okidokiUser.CountryCode
+	if user.CountryCode != nil {
+		country = *user.CountryCode
 	}
 
 	ruleApplication, err := rulesService.ApplyRules(age, country)
@@ -188,26 +189,26 @@ func calculateAgeFromDateOfBirth(rawDateOfBirth *string, clock Clock) int {
 	return years
 }
 
-// findUsersInOkidokiResponse searches for users in the okidoki response by userUrn
-func findUsersInOkidokiResponse(okidokiResponse []okidoki.OkidokiRawResponse, userUrns []string) ([]okidoki.OkidokiRawResponse, error) {
-	var okidokiUsers []okidoki.OkidokiRawResponse
+// findUsers returns the directory record for every requested URN, in request order
+func findUsers(directoryUsers []userdirectory.User, userUrns []string) ([]userdirectory.User, error) {
+	var users []userdirectory.User
 	for _, userUrn := range userUrns {
-		okidokiUser, err := findUserInOkidokiResponse(okidokiResponse, userUrn)
+		user, err := findUser(directoryUsers, userUrn)
 		if err != nil {
 			return nil, err
 		}
-		okidokiUsers = append(okidokiUsers, *okidokiUser)
+		users = append(users, *user)
 	}
-	return okidokiUsers, nil
+	return users, nil
 }
 
-func findUserInOkidokiResponse(okidokiResponse []okidoki.OkidokiRawResponse, userUrn string) (*okidoki.OkidokiRawResponse, error) {
-	for _, user := range okidokiResponse {
-		if user.Self.URN == userUrn {
+func findUser(directoryUsers []userdirectory.User, userUrn string) (*userdirectory.User, error) {
+	for _, user := range directoryUsers {
+		if user.URN == userUrn {
 			return &user, nil
 		}
 	}
-	return nil, fmt.Errorf("user not found in okidoki response: %s", userUrn)
+	return nil, fmt.Errorf("user not found in directory response: %s", userUrn)
 }
 
 // createMinorProtectionSetting creates a minor protection setting based on rule application

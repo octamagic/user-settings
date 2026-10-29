@@ -3,9 +3,9 @@ package api
 import (
 	"context"
 
-	proto "github.com/soundcloud/user-settings/internal/generated/user_settings/api"
-	"github.com/soundcloud/user-settings/internal/mappers"
-	"github.com/soundcloud/user-settings/internal/prefsservice"
+	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
+	"github.com/patrickisgreat/user-settings/internal/mappers"
+	"github.com/patrickisgreat/user-settings/internal/prefsservice"
 	"github.com/twitchtv/twirp"
 )
 

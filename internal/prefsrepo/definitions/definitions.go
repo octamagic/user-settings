@@ -1,3 +1,4 @@
+//go:generate mockgen -source=definitions.go -destination=mock_definitions.go -package=definitions
 package definitions
 
 import (

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/soundcloud/user-settings/internal/prefsrepo"
+	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/stretchr/testify/assert"
 )
 
