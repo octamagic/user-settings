@@ -19,7 +19,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         name: git checkout
         with:
           ref: ${{ inputs.ref }}
@@ -74,7 +74,7 @@ jobs:
       PLATFORM_PROFILE: "145582369311"
       AWS_REGION: eu-central-1
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         name: git checkout
         with:
           ref: ${{ inputs.ref }}
@@ -128,7 +128,7 @@ jobs:
     env:
       PLATFORM_PROFILE: "145582369311"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
       - name: setup github http auth
