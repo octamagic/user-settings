@@ -1,7 +1,6 @@
 package mappers
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -56,14 +55,6 @@ func (s *ProtoMapper) PutSettingToSetting(userUrn string, protoSetting *proto.Pu
 	internalType, err := settingTypeFromProto(protoSetting.Type)
 	if err != nil {
 		return nil, err
-	}
-
-	// Validate the JSON format if a value is provided
-	if protoSetting.Value != "" {
-		var jsonObj interface{}
-		if err := json.Unmarshal([]byte(protoSetting.Value), &jsonObj); err != nil {
-			return nil, fmt.Errorf("invalid JSON in setting value: %w", err)
-		}
 	}
 
 	return &prefsrepo.Setting{

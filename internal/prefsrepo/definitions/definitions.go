@@ -3,8 +3,12 @@ package definitions
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
+
+// ErrDefinitionNotFound is returned when no definition exists for a setting name.
+var ErrDefinitionNotFound = errors.New("setting definition not found")
 
 type SettingDefaults struct {
 	Global string `json:"global"`
@@ -47,7 +51,7 @@ func (repo *definitionsRepository) GetDefinition(settingName string) (*SettingDe
 			return &setting, nil
 		}
 	}
-	return nil, fmt.Errorf("setting %s not found", settingName)
+	return nil, fmt.Errorf("%w: %s", ErrDefinitionNotFound, settingName)
 }
 
 func (repo *definitionsRepository) GetSettingsNames() []string {

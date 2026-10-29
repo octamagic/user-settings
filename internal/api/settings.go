@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"errors"
 
+	commonv1 "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
 	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
 	"github.com/patrickisgreat/user-settings/internal/mappers"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice"
@@ -18,47 +20,42 @@ func InitService(service prefsservice.SettingsService, protoMapper mappers.Proto
 	mapper = protoMapper
 }
 
-// GetSettings handles the GetSettings endpoint.
+// GetSettings returns the caller's settings, optionally filtered by name.
 func GetSettings(ctx context.Context, request *proto.GetSettingsRequest) (*proto.GetSettingsResponse, error) {
-	// Retrieve the setting using the provided setting IDs.
-	userUrn := request.UserSession.UserUrn.Value
-	repoSettings, err := settingsService.GetSettings(ctx, userUrn, request.SettingNames)
+	userUrn, err := callerUrn(request.GetUserSession())
 	if err != nil {
-		// Convert "setting not found" to a Not Found error
-		if err.Error() == "setting not found" {
-			return nil, twirp.NotFoundError("Setting not found")
-		}
-		// Otherwise return an internal error
+		return nil, err
+	}
+
+	repoSettings, err := settingsService.GetSettings(ctx, userUrn, request.GetSettingNames())
+	if err != nil {
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	var protoSettings []*proto.Setting
-	for _, item := range repoSettings {
-		protoSettings = append(protoSettings, mapper.SettingToProto(&item))
+	protoSettings := make([]*proto.Setting, 0, len(repoSettings))
+	for i := range repoSettings {
+		protoSettings = append(protoSettings, mapper.SettingToProto(&repoSettings[i]))
 	}
 
 	return &proto.GetSettingsResponse{Settings: protoSettings}, nil
 }
+
+// GetPrivacySettings returns the privacy-relevant settings of the given users.
 func GetPrivacySettings(ctx context.Context, request *proto.GetPrivacySettingsRequest) (*proto.GetPrivacySettingsResponse, error) {
-	// Retrieve the setting using the provided setting IDs.
-	if len(request.UserUrns) == 0 {
-		return nil, twirp.InvalidArgumentError("request.UserUrns", "userUrns should not be empty")
+	if len(request.GetUserUrns()) == 0 {
+		return nil, twirp.InvalidArgumentError("user_urns", "user_urns should not be empty")
 	}
-	repoPrivacySettings, err := settingsService.GetPrivacySettings(ctx, request.UserUrns)
+
+	repoPrivacySettings, err := settingsService.GetPrivacySettings(ctx, request.GetUserUrns())
 	if err != nil {
-		// Convert "setting not found" to a Not Found error
-		if err.Error() == "setting not found" {
-			return nil, twirp.NotFoundError("Setting not found")
-		}
-		// Otherwise return an internal error
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	var protoUserSettings []*proto.UserSettings
+	protoUserSettings := make([]*proto.UserSettings, 0, len(repoPrivacySettings))
 	for _, userSettings := range repoPrivacySettings {
-		var userPrivacySettings []*proto.Setting
-		for _, privacySettings := range userSettings.Settings {
-			userPrivacySettings = append(userPrivacySettings, mapper.SettingToProto(&privacySettings))
+		userPrivacySettings := make([]*proto.Setting, 0, len(userSettings.Settings))
+		for i := range userSettings.Settings {
+			userPrivacySettings = append(userPrivacySettings, mapper.SettingToProto(&userSettings.Settings[i]))
 		}
 		protoUserSettings = append(protoUserSettings, &proto.UserSettings{
 			UserUrn:  userSettings.UserUrn,
@@ -68,66 +65,66 @@ func GetPrivacySettings(ctx context.Context, request *proto.GetPrivacySettingsRe
 
 	return &proto.GetPrivacySettingsResponse{Settings: protoUserSettings}, nil
 }
+
+// PutSetting creates or overwrites one setting for the caller.
 func PutSetting(ctx context.Context, request *proto.PutSettingRequest) (*proto.PutSettingResponse, error) {
-	// Basic validation: check that a user session is provided.
-	if request.UserSession == nil {
-		return nil, twirp.InvalidArgumentError("user_session", "user session is required")
+	userUrn, err := callerUrn(request.GetUserSession())
+	if err != nil {
+		return nil, err
 	}
 
-	// Validate the setting
-	if request.Setting == nil {
+	setting := request.GetSetting()
+	switch {
+	case setting == nil:
 		return nil, twirp.InvalidArgumentError("setting", "setting is required")
-	}
-	if request.Setting.Name == "" {
+	case setting.GetName() == "":
 		return nil, twirp.InvalidArgumentError("setting.name", "name is required")
-	}
-	if request.Setting.Value == "" {
+	case setting.GetValue() == "":
 		return nil, twirp.InvalidArgumentError("setting.value", "value is required")
 	}
 
-	// Convert the proto.Setting into our internal representation.
-	repoSetting, err := mapper.PutSettingToSetting(request.UserSession.UserUrn.Value, request.Setting)
+	repoSetting, err := mapper.PutSettingToSetting(userUrn, setting)
 	if err != nil {
-		// Handle specific error for invalid JSON
-		if err.Error() != "" && (err.Error() == "invalid JSON in setting value" || err.Error() != "" && err.Error()[0:13] == "invalid JSON ") {
-			return nil, twirp.InvalidArgumentError("setting.value", "invalid JSON format")
-		}
-		return nil, twirp.InvalidArgumentError("setting", err.Error())
+		return nil, twirp.InvalidArgumentError("setting.type", err.Error())
 	}
 
-	// Write (or overwrite) the setting in the repository.
 	if err := settingsService.PutSetting(ctx, *repoSetting); err != nil {
-		// Catch JSON validation errors from service layer
-		if err.Error() != "" && (err.Error() == "invalid JSON in setting value" || err.Error() != "" && err.Error()[0:13] == "invalid JSON ") {
-			return nil, twirp.InvalidArgumentError("setting.value", "invalid JSON format")
+		if errors.Is(err, prefsservice.ErrInvalidValue) {
+			return nil, twirp.InvalidArgumentError("setting.value", "value must be a valid JSON document")
 		}
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	// Return the updated setting.
 	return &proto.PutSettingResponse{Setting: mapper.SettingToProto(repoSetting)}, nil
 }
 
-// FetchUsersPrivacyAttributes returns privacy attributes for given users
+// FetchUsersPrivacyAttributes reports whether each given user is a minor.
 func FetchUsersPrivacyAttributes(ctx context.Context, request *proto.UsersPrivacyAttributesRequest) (*proto.UsersPrivacyAttributesResponse, error) {
-	if request.UserSession == nil {
-		return nil, twirp.InvalidArgumentError("user_session", "user session is required")
+	if _, err := callerUrn(request.GetUserSession()); err != nil {
+		return nil, err
 	}
-	if len(request.UserUrns) == 0 {
+	if len(request.GetUserUrns()) == 0 {
 		return nil, twirp.InvalidArgumentError("user_urns", "user_urns should not be empty")
 	}
 
-	privacyAttributes, err := settingsService.FetchUsersPrivacyAttributes(ctx, request.UserUrns)
+	privacyAttributes, err := settingsService.FetchUsersPrivacyAttributes(ctx, request.GetUserUrns())
 	if err != nil {
-		// Convert "setting not found" to a Not Found error
-		if err.Error() == "setting not found" {
-			return nil, twirp.NotFoundError("Setting not found")
-		}
 		return nil, twirp.InternalErrorWith(err)
 	}
 
-	// Convert the internal model to proto model
-	protoPrivacyAttributes := mapper.MapPrivacyAttributes(privacyAttributes)
+	return &proto.UsersPrivacyAttributesResponse{PrivacyAttributes: mapper.MapPrivacyAttributes(privacyAttributes)}, nil
+}
 
-	return &proto.UsersPrivacyAttributesResponse{PrivacyAttributes: protoPrivacyAttributes}, nil
+// callerUrn extracts the authenticated user's URN from the session, or returns
+// an InvalidArgument error when the session or URN is missing. The generated
+// getters are nil-safe, so a missing session never dereferences a nil pointer.
+func callerUrn(session *commonv1.UserSession) (string, error) {
+	if session == nil {
+		return "", twirp.InvalidArgumentError("user_session", "user session is required")
+	}
+	userUrn := session.GetUserUrn().GetValue()
+	if userUrn == "" {
+		return "", twirp.InvalidArgumentError("user_session.user_urn", "user_urn is required")
+	}
+	return userUrn, nil
 }

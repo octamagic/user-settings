@@ -222,6 +222,14 @@ func TestPutSettings(t *testing.T) {
 		assert.Nil(t, err)
 	})
 
+	t.Run("Invalid JSON value is rejected before reaching the repository", func(t *testing.T) {
+		invalid := *testSetting
+		invalid.Value = "{not json"
+
+		err := service.PutSetting(ctx, invalid)
+		assert.ErrorIs(t, err, ErrInvalidValue)
+	})
+
 	// Test case 3: Repository error
 	t.Run("Repository error", func(t *testing.T) {
 		mockRepo.EXPECT().PutSetting(ctx, gomock.Any()).Return(errors.New("put failed"))

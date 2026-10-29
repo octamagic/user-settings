@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/userdirectory"
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo"
 	"github.com/patrickisgreat/user-settings/internal/rulesservice"
+	"github.com/patrickisgreat/user-settings/internal/userdirectory"
 )
 
 type UserDirectory interface {

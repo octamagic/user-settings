@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/bakins/twirpotel"
-	common "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
 	"github.com/patrickisgreat/user-settings/internal/api"
 	"github.com/patrickisgreat/user-settings/internal/appserver"
 	"github.com/patrickisgreat/user-settings/internal/config"
+	common "github.com/patrickisgreat/user-settings/internal/generated/common/v1"
 	proto "github.com/patrickisgreat/user-settings/internal/generated/usersettings/v1"
 	"github.com/patrickisgreat/user-settings/internal/handlers"
 	"github.com/patrickisgreat/user-settings/internal/logging"

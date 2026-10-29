@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -278,5 +279,57 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		resp, err := FetchUsersPrivacyAttributes(ctx, req)
 		assert.NotNil(t, err)
 		assert.Nil(t, resp)
+	})
+}
+
+func assertTwirpCode(t *testing.T, err error, want twirp.ErrorCode) {
+	t.Helper()
+	var twerr twirp.Error
+	if assert.True(t, errors.As(err, &twerr), "expected a twirp error, got %v", err) {
+		assert.Equal(t, want, twerr.Code())
+	}
+}
+
+func TestGetSettingsValidation(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	t.Run("missing user_session is InvalidArgument, not a panic", func(t *testing.T) {
+		_, err := GetSettings(ctx, &proto.GetSettingsRequest{})
+		assertTwirpCode(t, err, twirp.InvalidArgument)
+	})
+
+	t.Run("missing user_urn is InvalidArgument", func(t *testing.T) {
+		_, err := GetSettings(ctx, &proto.GetSettingsRequest{UserSession: &sessionproto.UserSession{}})
+		assertTwirpCode(t, err, twirp.InvalidArgument)
+	})
+}
+
+func TestPutSettingErrorMapping(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockService := setupTestAPI(ctrl)
+	ctx := context.Background()
+
+	t.Run("invalid JSON value from the service is InvalidArgument", func(t *testing.T) {
+		mockService.EXPECT().PutSetting(ctx, gomock.Any()).Return(fmt.Errorf("%w: unexpected end of input", prefsservice.ErrInvalidValue))
+
+		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
+		assertTwirpCode(t, err, twirp.InvalidArgument)
+	})
+
+	t.Run("any other service error is Internal", func(t *testing.T) {
+		mockService.EXPECT().PutSetting(ctx, gomock.Any()).Return(errors.New("dynamodb unavailable"))
+
+		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: createTestProtoPutSetting()})
+		assertTwirpCode(t, err, twirp.Internal)
+	})
+
+	t.Run("unsupported setting type is InvalidArgument", func(t *testing.T) {
+		setting := createTestProtoPutSetting()
+		setting.Type = proto.SettingType(99)
+
+		_, err := PutSetting(ctx, &proto.PutSettingRequest{UserSession: createTestUserSession(), Setting: setting})
+		assertTwirpCode(t, err, twirp.InvalidArgument)
 	})
 }

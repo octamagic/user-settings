@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/patrickisgreat/user-settings/internal/userdirectory"
 	"github.com/patrickisgreat/user-settings/internal/rulesservice"
+	"github.com/patrickisgreat/user-settings/internal/userdirectory"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -32,7 +32,7 @@ func TestGetSettings(t *testing.T) {
 	testUserDateOfBirth := "2000/01/01"
 	testDate := time.Now()
 	directoryUser := userdirectory.User{
-		URN: testUserUrn,
+		URN:         testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}
@@ -114,13 +114,13 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	testUserDateOfBirth := fmt.Sprintf("%d/%d/%d", eighteenYearsAgo.Year(), eighteenYearsAgo.Month(), eighteenYearsAgo.Day())
 	testUserDateOfBirth2 := fmt.Sprintf("%d/%d/%d", eighteenYearsAgoMinusMonth.Year(), eighteenYearsAgoMinusMonth.Month(), eighteenYearsAgoMinusMonth.Day())
 	directoryUserEighteen := userdirectory.User{
-		URN: testUserUrn,
+		URN:         testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}
 
 	directoryUserEighteenMinusMonth := userdirectory.User{
-		URN: testUserUrn,
+		URN:         testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth2,
 	}
@@ -176,7 +176,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	testUserDateOfBirth := "2000/01/01"
 	testDate := time.Now()
 	directoryUser := userdirectory.User{
-		URN: testUserUrn,
+		URN:         testUserUrn,
 		CountryCode: &testUserCountryCode,
 		DateOfBirth: &testUserDateOfBirth,
 	}

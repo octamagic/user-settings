@@ -4,6 +4,7 @@ package prefsservice
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -14,6 +15,9 @@ import (
 	"github.com/patrickisgreat/user-settings/internal/prefsrepo/definitions"
 	"github.com/patrickisgreat/user-settings/internal/prefsservice/domain"
 )
+
+// ErrInvalidValue is returned when a setting value is not a valid JSON document.
+var ErrInvalidValue = errors.New("setting value is not valid JSON")
 
 type SettingsRepository interface {
 	PutSetting(ctx context.Context, setting prefsrepo.Setting) error
@@ -112,7 +116,7 @@ func (s *settingsService) PutSetting(ctx context.Context, setting prefsrepo.Sett
 	if setting.Value != "" {
 		var jsonObj interface{}
 		if err := json.Unmarshal([]byte(setting.Value), &jsonObj); err != nil {
-			return fmt.Errorf("invalid JSON in setting value: %w", err)
+			return fmt.Errorf("%w: %w", ErrInvalidValue, err)
 		}
 	}
 
