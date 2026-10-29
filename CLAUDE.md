@@ -42,6 +42,8 @@ make generate             # protoc + Twirp + mockgen; commit the output
 make tf-test              # validate every Terraform root + `terraform test`, against a
                           # LOCAL tf-tools checkout (TF_TOOLS_DIR, default ~/code/tf-tools)
 scripts/tf-local.sh       # what tf-test runs; prints the temp dir it worked in
+/add-rpc <Name>           # skill: proto → generate → handler → tests, in order
+/tf-bump <tag>            # skill: move every tf-tools pin, refresh lock files, revalidate
 ```
 
 - Test and e2e env files are sourced from `config/.env.*`; the Makefile does this.
