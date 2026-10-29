@@ -1,292 +1,104 @@
-# User Preferences Service
+# user-settings
 
-A centralized service for managing user preferences across SoundCloud.
+A small, production-shaped Go service for storing per-user settings and
+answering privacy questions about users, such as whether they are a minor
+under the age rules of their country.
 
-## Overview
+It was originally built for a music streaming platform's backend. This copy
+has been scrubbed of that company's infrastructure and internal libraries,
+and reworked in a series of focused commits. The git history is meant to be
+read: each commit after the initial import fixes or improves one thing and
+says why.
 
-The User Preferences Service provides a standardized way to manage user preferences, such as:
+## What it does
 
-- Badge visibility
-- Featured fans settings
-- Notification preferences
-- Privacy settings
+The service exposes a [Twirp](https://github.com/twitchtv/twirp) RPC API
+(JSON or protobuf over HTTP) with four methods:
 
-### Entry Point (cmd/api/main.go)
+| RPC | Purpose |
+| --- | --- |
+| `GetSettings` | Return the caller's settings, optionally filtered by name |
+| `PutSetting` | Create or overwrite one setting for the caller |
+| `GetPrivacySettings` | Return the privacy-relevant settings of other users, filling in defaults for anything unset |
+| `FetchUsersPrivacyAttributes` | Report whether each user is a minor under their country's age rules |
 
-This file serves as the application bootstrap, initializing the application context and wiring up
-all dependencies. It creates the Twirp server for handling user settings requests and registers
-the router with the HTTP server. The main function orchestrates the initialization sequence:
-setting up the context with DynamoDB client, repository, and service, then starting the HTTP
-server to listen for incoming requests.
+Settings are stored in a single DynamoDB table keyed by user URN and setting
+name. Ages come from an upstream user directory over HTTP. Age thresholds
+per country live in an in-memory rules repository.
 
-### API Handlers (internal/api/settings.go)
+## Quick start
 
-The API layer provides three main endpoints: GetSettings, PutSettings, and DeleteSettings.
-Each handler performs input validation, calls the appropriate service method, and transforms
-the result into the response format. The handlers act as a translation layer between the
-JSON/Protocol Buffer requests and the internal domain models. Error handling is comprehensive,
-with appropriate error codes returned for validation failures, not found conditions, and server errors.
-
-### Service Layer (internal/prefsservice/service.go)
-
-The service implementation encapsulates the business logic for user settings operations.
-It validates that setting values contain valid JSON, handles type conversions between internal
-models and protocol buffer types, and manages the setting types system. The service layer
-defines interfaces that decouple implementation details, making the system more testable
-and maintainable. It acts as the intermediary between the API layer and data access layer.
-
-### Minor protection User Attributes
-
-Service is calling Okidoki to fetch user data and determine if the user is minor. 
-Decision logic is located in /regionalrulesrepo/repository.go
-RulesService fetching rules set for the particular user and based on the rules provides RulesApplication value.
-
-```go
-const (
-	ApplyRestriction RuleApplication = iota
-	NoRestriction
-)
-```
-
-```go
-rules := []Rule{{
-        ID:    "GB",
-        Type:  RuleAgeRestriction,
-        Value: "{\"age\": 18}",
-    }, {
-        ID:    "US",
-        Type:  RuleAgeRestriction,
-        Value: "{\"age\": 18}",
-    }}
-```
-
-### Service extension in the future
-
-In the future we could extend setting with the metadata, which could be stored separate from the settings themselves.
-We could include following info as a definitions reference and utilize it on a setting creation:
-
-| Field    | Type    | Notes                                                              |
-|----------|---------|--------------------------------------------------------------------|
-| type     | string  | S or B or N                                                        |
-| privacy  | boolean | Appears in GetPrivacySettings response, by other users, if enabled |
-| default  | string  |                                                                    |                                                                    |
-| category | string  |                                                                    |                                                                    |
-| order    | number  |                                                                    |                                                                    |
-
-### Repository Layer (internal/prefsrepo/repository.go)
-
-This repository provides a clean abstraction over DynamoDB operations. It implements methods
-for creating, updating, retrieving, and deleting user settings. The repository uses DynamoDB
-expressions to build queries and conditions for data access. It handles marshaling/unmarshaling
-between Go structs and DynamoDB attribute values. Primary and sort keys are constructed to
-enable efficient lookups by user URN and setting Name.
-
-### Data Models (internal/prefsrepo/models.go)
-
-The models define structure of user settings as they're stored in the database. Each setting
-has properties like Name, user URN, type, updated timestamp, and value.
-The models include methods for converting between internal representations and database items.
-The setting types are represented as strings internally but mapped to enum values in the API.
-
-### Application Context (internal/appserver/context.go)
-
-The context provides dependency injection for the app, creating and maintaining references to
-the repository and service implementations. It inits DynamoDB client with config and sets up
-OpenTelemetry for observability. The context ensures that dependencies are properly initialized
-before the server starts, using a singleton pattern with a sync.Once to prevent multiple instances.
-
-### Server Configuration (internal/appserver/server.go)
-
-This component handles HTTP server lifecycle, including graceful shutdown on sigint. It configures
-the server with the router and address, starts listening for requests, and waits for termination signals.
-
-## Protocol Buffer Schema for User Settings
-
-Location: rpc/user_settings_api.proto
-Interface definition for client-server comms via Twirp RPC
-
-### Setting Types Enum
-
-```proto
-enum SettingType {
-  STRING = 0;
-  BOOLEAN = 1;
-  NUMBER = 2;
-}
-```
-
-### Design
-
-- Strong typing for the setting Value
-- Service layer handles conversions between proto/internal formats
-
-```proto
-service UserSettingsService {
-  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse) {}
-  rpc GetPrivacySettings(GetPrivacySettingsRequest) returns (GetPrivacySettingsResponse) {}
-  rpc PutSetting(PutSettingRequest) returns (PutSettingResponse) {}
-
-  rpc FetchUsersPrivacyAttributes(UsersPrivacyAttributesRequest) returns (UsersPrivacyAttributesResponse) {}
-}
-
-```
-
-# Database Schema
-
-## User Settings Table
-
-| Field       | Type      | Index | Notes |
-|-------------|-----------|-------|-------|
-| pk(userUrn) | string    | Hash  |       |
-| sk(name)    | string    | Range |       |
-| type        | string    |       | S/B/N |
-| value       | string    |       |       |
-| updatedAt   | time.Time |       |       |
-
-## Prerequisites
-
-- [Go 1.21+](https://go.dev/doc/install)
-- [Protobuf Compiler](https://grpc.io/docs/protoc-installation/)
-- [Task](https://taskfile.dev/installation/) (task runner)
-
-## Getting Started
-
-1. Install dependencies:
-
-   ```bash
-   task deps:macos
-   task install
-   ```
-
-2. Generate protocol buffer code:
-
-   ```bash
-   task gen:rpc
-   ```
-
-3. Build the service:
-
-   ```bash
-   task build
-   ```
-
-4. Run the service:
-
-   ```bash
-   task dev
-   ```
-
-5. Test the service:
-
-   ```bash
-   task test
-   ```
-
-## API Endpoints
-
-The service provides a [Twirp](https://github.com/twitchtv/twirp) RPC API:
-
-```text
-/twirp/proto.soundcloud.user_settings.api.UserSettingsService/*
-```
-
-### Available Endpoints
-
-- **GetSettings**: Get preferences for a user based on UserSession
-- **GetPrivacySettings**: Gets privacy related preferences for a User by UserUrn
-- **PutSetting**: Create or update a preference
-- **FetchUsersPrivacyAttributes**: Provides user privacy attributes based on UserUrn
-
-## Sample Requests
-
-### Get User Preferences
-
-Use this endpoint to retrieve preferences for a given user. In the request, provide your session
-details along with the user URN and at least one setting ID you wish to fetch.
+Prerequisites: Go 1.24+, Docker, `protoc` (only if you change the protos).
 
 ```bash
-curl -i -X POST -H "Content-Type: application/json" \
-  http://localhost:8000/twirp/proto.soundcloud.user_settings.api.UserSettingsService/GetSettings \
-  --data '{
-    "user_session": {
-      "user_urn": "soundcloud:users:123456",
-      "agent_urn": "urn:agent:abc",
-      "geo": {
-        "country_code": "US"
-      },
-      "scopes": [],
-      "features": []
-    },
-    "setting_names": ["setting1"]
-  }'
+make docker-up              # DynamoDB Local on :8900, admin UI on :8001
+set -a; . ./config/.env.local; set +a
+go run ./cmd/api
 ```
+
+Then, in another shell:
 
 ```bash
-curl -i -X POST -H "Content-Type: application/json" \
-  http://localhost:8000/twirp/proto.soundcloud.user_settings.api.UserSettingsService/GetPrivacySettings \
-  --data '{
-    "user_session": {
-      "user_urn": "soundcloud:users:123456",
-      "agent_urn": "urn:agent:abc",
-      "geo": {
-        "country_code": "US"
-      },
-      "scopes": [],
-      "features": []
-    },
-    "user_urns": ["soundcloud:users:654321"]
-  }'
+B=http://localhost:8000/twirp/usersettings.v1.UserSettingsService
+
+curl -s -X POST -H 'Content-Type: application/json' $B/PutSetting \
+  -d '{"user_session":{"user_urn":"urn:user:42"},"setting":{"name":"volume","type":"NUMBER","value":"80"}}'
+# {"setting":{"user_urn":"urn:user:42","name":"volume","type":"NUMBER","value":"80","updated_at":"1793295322"}}
+
+curl -s -X POST -H 'Content-Type: application/json' $B/GetSettings \
+  -d '{"user_session":{"user_urn":"urn:user:42"},"setting_names":["volume"]}'
+# {"settings":[{"user_urn":"urn:user:42","name":"volume","type":"NUMBER","value":"80","updated_at":"1793295322"}]}
+
+curl -s -X POST -H 'Content-Type: application/json' $B/PutSetting \
+  -d '{"user_session":{"user_urn":"urn:user:42"},"setting":{"name":"theme","type":"STRING","value":"dark"}}'
+# {"code":"invalid_argument","msg":"setting.value value must be a valid JSON document", ...}
 ```
 
-### Put a User Preference
+Setting values are JSON documents, so a string value is `"\"dark\""`.
 
-This endpoint creates a new preference or updates an existing one. In the sample below, a badge
-preference is being Puted. Note that the service will update the `updated_at` timestamp automatically.
+## Tests
 
 ```bash
-curl -i -X POST -H "Content-Type: application/json" \
-  http://localhost:8000/twirp/proto.soundcloud.user_settings.api.UserSettingsService/PutSetting \
-  --data '{
-    "user_session": {
-      "user_urn": "soundcloud:users:123456",
-      "agent_urn": "urn:agent:abc",
-      "geo": {
-        "country_code": "US"
-      },
-      "scopes": [],
-      "features": []
-    },
-    "setting": {
-      "name": "setting1",
-      "type": 1,
-      "value": "true"
-    }
-  }'
+make test               # unit tests, no I/O
+make test-integration   # repository against DynamoDB Local (make docker-up first)
+make test-e2e           # full service over HTTP; testcontainers starts DynamoDB and WireMock
+make lint
 ```
 
-### Get User Privacy Attributes
+See [docs/development.md](docs/development.md) for the full workflow and
+[docs/architecture.md](docs/architecture.md) for how the code is organised and
+why.
 
-Use this endpoint to fetch privacy attributes for a set of Users. Provide your session data along with
-the user URNs.
+## Layout
 
-```bash
-curl -i -X POST -H "Content-Type: application/json" \
-  http://localhost:8000/twirp/proto.soundcloud.user_settings.api.UserSettingsService/FetchUsersPrivacyAttributes \
-  --data '{
-    "user_session": {
-      "user_urn": "soundcloud:users:123456",
-      "agent_urn": "urn:agent:abc",
-      "geo": {
-        "country_code": "US"
-      },
-      "scopes": [],
-      "features": []
-    },
-    "user_urns": ["soundcloud:users:788871454"]
-  }'
+```
+cmd/api/                 entry point: load config, build the app, run the server
+internal/
+  app/                   composition root: wires clients, repos, services, handler
+  api/                   Twirp handlers; maps domain errors to Twirp codes
+  httpserver/            router, middleware, graceful shutdown
+  prefsservice/          settings use cases
+    domain/              minor-protection decision (age parsing, rules)
+  prefsrepo/             DynamoDB repository and setting definitions
+  rulesservice/          applies per-country age rules
+  regionalrulesrepo/     in-memory rule store
+  userdirectory/         HTTP client for the upstream user directory
+  mappers/               proto <-> domain conversion
+  config/ logging/ telemetry/ awsdynamo/
+  generated/             protoc + Twirp output (committed; `make generate`)
+rpc/                     .proto contracts
+tests/integration/       repository tests against DynamoDB Local
+tests/e2e/               black-box tests with testcontainers
 ```
 
-Thank you @bbeesley and @caplis for your foundational work that helped me piece this together!
-### Resources:
-[https://github.com/soundcloud/fortune-go](https://github.com/soundcloud/fortune-go)
-[https://github.com/soundcloud/private-resource-authorizer](https://github.com/soundcloud/private-resource-authorizer)
+## Status and known gaps
+
+- Rules are hard-coded (GB and US, 18+). A real deployment would load them
+  from configuration or a table.
+- Only one setting definition ships. Definitions are the place where a
+  setting's type, privacy flag and defaults live; see `internal/prefsrepo/definitions`.
+- `GetSettings` queries a user's whole partition and filters by name in
+  memory. Users have a handful of settings, so this is one cheap query rather
+  than a `BatchGetItem`; revisit if the per-user setting count grows.
+- There is no authentication. The `user_session` in each request is trusted,
+  as it was behind the original platform's API gateway.
