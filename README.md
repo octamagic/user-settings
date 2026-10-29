@@ -91,6 +91,17 @@ tests/integration/       repository tests against DynamoDB Local
 tests/e2e/               black-box tests with testcontainers
 ```
 
+## Infrastructure and delivery
+
+`terraform/` runs the service on AWS (ECS Fargate behind an internal ALB, DynamoDB,
+ECR, CloudWatch, autoscaling, a GitHub OIDC deploy role) and is composed entirely
+from [tf-tools](https://github.com/patrickisgreat/tf-tools) modules; the two pieces
+it needed that the library lacked were contributed back rather than copied in. The
+GitHub workflows are assembled from
+[actions-toolkit](https://github.com/patrickisgreat/actions-toolkit) reusable
+workflows: Go CI, image build and scan, Terraform plan-on-PR / apply-on-merge, and an
+OIDC-authenticated ECS deploy. Details in [terraform/README.md](terraform/README.md).
+
 ## Status and known gaps
 
 - Rules are hard-coded (GB and US, 18+). A real deployment would load them
@@ -102,3 +113,6 @@ tests/e2e/               black-box tests with testcontainers
   than a `BatchGetItem`; revisit if the per-user setting count grows.
 - There is no authentication. The `user_session` in each request is trusted,
   as it was behind the original platform's API gateway.
+- Terraform pins tf-tools `v0.3.0`, which is cut once the companion tf-tools branch
+  (DynamoDB module, `track_latest_task_definition`) merges. Until then `make tf-test`
+  validates against a local checkout.

@@ -111,3 +111,33 @@ test in `repository_test.go`. The rule value is a JSON document; see
 docker build -t user-settings .
 docker run --rm -p 8000:8000 --env-file config/.env.local user-settings
 ```
+
+## Infrastructure
+
+`terraform/` is documented in [terraform/README.md](../terraform/README.md). The short
+version:
+
+```bash
+make tf-fmt && make tf-lint
+make tf-test            # validate every root + terraform test, against ~/code/tf-tools
+```
+
+## CI, and the variables it needs
+
+Workflows call [actions-toolkit](https://github.com/patrickisgreat/actions-toolkit)
+reusable workflows pinned to `@v0`. Credentialed jobs skip until these exist:
+
+| repository variable | used by | value |
+| --- | --- | --- |
+| `AWS_REGION` | terraform, deploy | e.g. `us-east-1` |
+| `AWS_ACCOUNT_ID` | deploy | registry host for ECR |
+| `TF_STATE_BUCKET` | terraform | S3 bucket for state |
+| `AWS_TERRAFORM_ROLE_ARN` | terraform | role trusted by this repo through OIDC, able to manage the stack |
+| `AWS_DEPLOY_ROLE_ARN_DEV` / `_STAGING` / `_PRODUCTION` | deploy | the `ci_role_arn` output of each environment |
+
+| secret | used by | value |
+| --- | --- | --- |
+| `TF_SECRET_VARS` | terraform | newline-separated `key=value` Terraform inputs (`vpc_id=...`, `private_subnet_ids=[...]`, `user_directory_base_url=...`) |
+
+GitHub Environments `infrastructure`, `dev`, `staging` and `production` gate the apply
+and deploy jobs; put required reviewers on `production` and `infrastructure`.

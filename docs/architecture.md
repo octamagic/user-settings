@@ -143,3 +143,21 @@ The commit history has the detail; in summary:
 | age math | hours / 365 | calendar arithmetic |
 | privacy batch | serial N+1 | bounded fan-out, order preserved |
 | dead code | several unreferenced exported functions | removed |
+
+## Deployment
+
+```
+GitHub Actions ──OIDC──▶ per-environment deploy role ──▶ ECR push, ECS roll
+                                      │
+Terraform (tf-tools modules) ─────────┴──▶ ECR · DynamoDB · ECS cluster + Fargate service
+                                           ALB (internal) · autoscaling · logs · IAM
+```
+
+- One composition module, three environment roots that differ only in sizing.
+- The task role can touch exactly one table. The execution role has the AWS managed
+  ECS execution policy. The deploy role can push to one repository, register task
+  definitions, update one service, and pass the two task roles to ECS, nothing else.
+- Image rollouts register a new task-definition revision; Terraform follows the newest
+  revision (`track_latest_task_definition`) so the two do not fight.
+- Tasks run on private subnets with a read-only root filesystem, reachable only from
+  the load balancer's security group on the service port.
