@@ -4,10 +4,10 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "./bin/user-settings-api"
-  cmd = "task build"
+  bin = "./bin/user-settings"
+  cmd = "go build -o ./bin/user-settings ./cmd/api"
   delay = 1000
-  exclude_dir = ["tmp", "vendor", "testdata", "terraform", "bin", "internal/generated"]
+  exclude_dir = ["tmp", "vendor", "testdata", "bin", "internal/generated"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
