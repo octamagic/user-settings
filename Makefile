@@ -7,10 +7,12 @@ UNIT_PKGS   := $(shell go list ./... | grep -v -e /generated -e /tests/)
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
 
-tools: ## Install code generators and dev tools
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	go install github.com/twitchtv/twirp/protoc-gen-twirp@latest
-	go install go.uber.org/mock/mockgen@latest
+tools: ## Install the code generators, pinned to the versions recorded in internal/generated
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.12
+	go install github.com/twitchtv/twirp/protoc-gen-twirp@v8.1.3
+	go install go.uber.org/mock/mockgen@v0.6.0
+
+dev-tools: tools ## Generators plus the live-reload runner used by `make run`
 	go install github.com/air-verse/air@latest
 
 generate: generate-proto generate-mocks ## Regenerate protobuf, Twirp and mock code

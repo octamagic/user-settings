@@ -6,7 +6,7 @@
 - Docker, for DynamoDB Local and the test containers
 - `protoc` (`brew install protobuf`), only if you edit `rpc/*.proto`
 - `golangci-lint` v2 (`brew install golangci-lint`)
-- `make tools` installs `protoc-gen-go`, `protoc-gen-twirp`, `mockgen` and `air`
+- `make tools` installs `protoc-gen-go`, `protoc-gen-twirp` and `mockgen` at the pinned versions; `make dev-tools` adds `air` for `make run`
 
 ## Everyday commands
 
