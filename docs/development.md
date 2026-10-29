@@ -134,10 +134,12 @@ reusable workflows pinned to `@v0`. Credentialed jobs skip until these exist:
 | `TF_STATE_BUCKET` | terraform | S3 bucket for state |
 | `AWS_TERRAFORM_ROLE_ARN` | terraform | role trusted by this repo through OIDC, able to manage the stack |
 | `AWS_DEPLOY_ROLE_ARN_DEV` / `_STAGING` / `_PRODUCTION` | deploy | the `ci_role_arn` output of each environment |
+| `CLAUDE_REVIEWS` | claude-code-review, claude | `true` to enable the automated PR review and the @claude mention responder |
 
 | secret | used by | value |
 | --- | --- | --- |
 | `TF_SECRET_VARS` | terraform | newline-separated `key=value` Terraform inputs (`vpc_id=...`, `private_subnet_ids=[...]`, `user_directory_base_url=...`) |
+| `CLAUDE_CODE_OAUTH_TOKEN` | claude-code-review, claude | from `claude setup-token`; without it the Claude jobs fail with a 401 |
 
 GitHub Environments `infrastructure`, `dev`, `staging` and `production` gate the apply
 and deploy jobs; put required reviewers on `production` and `infrastructure`.

@@ -136,5 +136,5 @@ internal/httpserver router, middleware      internal/prefsservice  use cases (+ 
 internal/prefsrepo  DynamoDB + definitions  internal/userdirectory upstream HTTP client
 internal/generated  protoc output, committed, never edited
 terraform/          tf-tools composition; docs in terraform/README.md
-.github/workflows   ci.yml, terraform.yml, deploy.yml (all actions-toolkit)
+.github/workflows   ci, terraform, deploy (actions-toolkit); claude-code-review, claude (gated on CLAUDE_REVIEWS)
 ```

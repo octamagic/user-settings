@@ -100,7 +100,8 @@ it needed that the library lacked were contributed back rather than copied in. T
 GitHub workflows are assembled from
 [actions-toolkit](https://github.com/octamagic/actions-toolkit) reusable
 workflows: Go CI, image build and scan, Terraform plan-on-PR / apply-on-merge, and an
-OIDC-authenticated ECS deploy. Details in [terraform/README.md](terraform/README.md).
+OIDC-authenticated ECS deploy, plus an automated Claude code review on every PR
+and an @claude mention responder. Details in [terraform/README.md](terraform/README.md).
 
 ## Status and known gaps
 
