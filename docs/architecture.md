@@ -6,21 +6,27 @@ layer.
 
 ## Shape
 
-```
-          HTTP (Twirp, JSON or protobuf)
-                    │
-   httpserver ──────┤  otelhttp → logging middleware → Twirp router, /-/health
-                    │
-   api.Server ──────┤  validate request, call service, map errors to Twirp codes
-                    │
-   prefsservice ────┤  use cases: get/put settings, privacy settings with defaults
-        │           │
-        ├─ domain ──┤  minor-protection decision: parse DOB, compute age, apply rules
-        │     ├── userdirectory (HTTP)      upstream system of record for DOB/country
-        │     └── rulesservice → regionalrulesrepo   per-country age thresholds
-        │
-   prefsrepo ───────┤  DynamoDB table (pk = user URN, sk = setting name)
-        └─ definitions   static catalogue of known settings and their defaults
+```mermaid
+flowchart TD
+    client([Client: Twirp over HTTP, JSON or protobuf])
+    client --> httpserver
+
+    subgraph edge["internal/httpserver"]
+        httpserver["otelhttp → logging middleware → Twirp router, /-/health"]
+    end
+
+    httpserver --> api["api.Server<br/>validate request, call service, map errors to Twirp codes"]
+    api --> svc["prefsservice<br/>get/put settings, privacy settings with defaults"]
+
+    svc --> domain["prefsservice/domain<br/>minor protection: parse DOB, compute age, apply rules"]
+    svc --> repo["prefsrepo<br/>DynamoDB table (pk = user URN, sk = setting name)"]
+    svc --> defs["prefsrepo/definitions<br/>static catalogue of settings and defaults"]
+
+    domain --> dir["userdirectory<br/>HTTP client: system of record for DOB and country"]
+    domain --> rules["rulesservice → regionalrulesrepo<br/>per-country age thresholds"]
+
+    repo --> ddb[(DynamoDB)]
+    dir --> upstream[(User directory)]
 ```
 
 Dependencies point inward: `api` knows `prefsservice`, `prefsservice` knows
@@ -146,11 +152,23 @@ The commit history has the detail; in summary:
 
 ## Deployment
 
-```
-GitHub Actions ──OIDC──▶ per-environment deploy role ──▶ ECR push, ECS roll
-                                      │
-Terraform (tf-tools modules) ─────────┴──▶ ECR · DynamoDB · ECS cluster + Fargate service
-                                           ALB (internal) · autoscaling · logs · IAM
+```mermaid
+flowchart LR
+    gha[GitHub Actions] -- OIDC --> role[Per-environment deploy role]
+    role --> ecr[ECR push]
+    role --> roll[ECS roll: new task-definition revision]
+
+    tf[Terraform<br/>tf-tools modules] --> ecr2[ECR]
+    tf --> ddb[(DynamoDB)]
+    tf --> ecs[ECS cluster + Fargate service]
+    tf --> alb[Internal ALB]
+    tf --> scale[CPU autoscaling]
+    tf --> logs[CloudWatch logs]
+    tf --> iam[IAM: task, execution, deploy roles]
+
+    roll -. "track_latest_task_definition" .-> ecs
+    alb --> ecs
+    ecs --> ddb
 ```
 
 - One composition module, three environment roots that differ only in sizing.
