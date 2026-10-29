@@ -108,6 +108,10 @@ scripts/tf-local.sh       # what tf-test runs; prints the temp dir it worked in
   the generated `UserSettingsServicePathPrefix` already ends with the service name.
 - **The toolkit's `.toolkit` checkout** appears in the workspace during CI runs. It is
   gitignored here; a glob over the repo in a build step must skip it.
+- **Generated Twirp bytes depend on the Go version that built protoc-gen-twirp.** It
+  gzips the descriptor and compress/flate output moves between Go releases. `make tools`
+  builds the generators with the go.mod Go version for that reason; a diff that is only
+  the gzipped `FileDescriptorProto` means the tools were built with a different Go.
 - **A DynamoDB attribute listed twice** (as a key and again in `attributes`) blew up
   the `for` expression in the tf-tools module until it grouped with `...`. Dedup by
   name is required and tested there.
