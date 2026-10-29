@@ -28,7 +28,7 @@ const SettingName = "testSetting"
 
 func createTestSetting(userUrn string) *prefsrepo.Setting {
 	if userUrn == "" {
-		userUrn = "soundcloud:users:123456"
+		userUrn = "urn:user:123456"
 	}
 	return &prefsrepo.Setting{
 		UserUrn:     userUrn,
@@ -49,7 +49,7 @@ func createTestProtoPutSetting() *proto.PutSetting {
 
 func createTestUserSession() *sessionproto.UserSession {
 	return &sessionproto.UserSession{
-		UserUrn:  wrapperspb.String("soundcloud:users:123456"),
+		UserUrn:  wrapperspb.String("urn:user:123456"),
 		AgentUrn: wrapperspb.String("urn:agent:web"),
 		Geo: &sessionproto.Geo{
 			CountryCode: "US",

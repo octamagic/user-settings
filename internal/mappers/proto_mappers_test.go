@@ -17,7 +17,7 @@ func TestSettingConversion(t *testing.T) {
 	// Test data
 	now := time.Now()
 	repoSetting := &prefsrepo.Setting{
-		UserUrn:     "soundcloud:users:123456",
+		UserUrn:     "urn:user:123456",
 		UpdatedAt:   now,
 		Name:        "testSetting",
 		SettingType: prefsrepo.SettingTypeBoolean.String(),

@@ -9,7 +9,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.4
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.7.86
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.44.0
-	github.com/aws/smithy-go v1.22.4
 	github.com/bakins/twirpotel v0.2.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/stretchr/testify v1.10.0
@@ -22,6 +21,7 @@ require (
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/sdk v1.37.0
 	go.uber.org/mock v0.5.2
+	golang.org/x/sync v0.16.0
 	google.golang.org/protobuf v1.36.6
 )
 
@@ -42,6 +42,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.25.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.30.3 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.34.0 // indirect
+	github.com/aws/smithy-go v1.22.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect

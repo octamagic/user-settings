@@ -3,6 +3,7 @@ package prefsservice
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -18,7 +19,7 @@ const SettingName = "testSetting"
 
 func createTestSetting(userUrn string) *prefsrepo.Setting {
 	if userUrn == "" {
-		userUrn = "soundcloud:users:123456"
+		userUrn = "urn:user:123456"
 	}
 	return &prefsrepo.Setting{
 		UserUrn:     userUrn,
@@ -46,7 +47,7 @@ func TestGetSettings(t *testing.T) {
 	ctx := context.Background()
 
 	// Test setting
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 	testSetting := createTestSetting(testUserUrn)
 
 	// Test case 1: Get existing setting
@@ -101,7 +102,7 @@ func TestGetPrivacySettings(t *testing.T) {
 	ctx := context.Background()
 
 	// Test setting
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 	testSetting := createTestSetting(testUserUrn)
 
 	// Test case 1: Get existing setting
@@ -212,7 +213,7 @@ func TestPutSettings(t *testing.T) {
 	ctx := context.Background()
 
 	// Test data
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 	testSetting := createTestSetting(testUserUrn)
 
 	// Test case 1: Put new setting
@@ -253,7 +254,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 
 	ctx := context.Background()
 
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 
 	t.Run("Fetch attributes for user", func(t *testing.T) {
 		minorSettingProcessor.EXPECT().FetchUsersPrivacyAttributes(ctx, gomock.Any()).Return([]domain.UserPrivacyAttributes{
@@ -280,4 +281,44 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 		require.Error(t, err)
 	})
 
+}
+
+func TestGetPrivacySettingsBatch(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockRepo := NewMockSettingsRepository(ctrl)
+	definitionsRepo := definitions.NewMockRepository(ctrl)
+	minorSettingProcessor := domain.NewMockMinorSettingProcessor(ctrl)
+	service := NewSettingsService(mockRepo, minorSettingProcessor, definitionsRepo)
+	ctx := context.Background()
+
+	userUrns := make([]string, 25)
+	attributes := make([]domain.UserPrivacyAttributes, 25)
+	for i := range userUrns {
+		userUrns[i] = fmt.Sprintf("urn:user:%d", i)
+		attributes[i] = domain.UserPrivacyAttributes{UserUrn: userUrns[i]}
+	}
+
+	t.Run("results keep request order and skip users whose lookup fails", func(t *testing.T) {
+		definitionsRepo.EXPECT().GetPrivacySettingsNames().Return([]string{SettingName})
+		minorSettingProcessor.EXPECT().FetchUsersPrivacyAttributes(ctx, userUrns).Return(attributes, nil)
+		mockRepo.EXPECT().GetSettings(gomock.Any(), gomock.Any(), gomock.Any()).Times(25).DoAndReturn(
+			func(_ context.Context, userUrn string, _ []string) ([]prefsrepo.Setting, error) {
+				if userUrn == "urn:user:7" {
+					return nil, errors.New("throttled")
+				}
+				return []prefsrepo.Setting{*createTestSetting(userUrn)}, nil
+			})
+
+		got, err := service.GetPrivacySettings(ctx, userUrns)
+
+		require.NoError(t, err)
+		require.Len(t, got, 24)
+		for i, userSettings := range got {
+			expectedIndex := i
+			if i >= 7 {
+				expectedIndex = i + 1
+			}
+			assert.Equal(t, userUrns[expectedIndex], userSettings.UserUrn)
+		}
+	})
 }

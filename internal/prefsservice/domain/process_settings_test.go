@@ -31,7 +31,7 @@ func TestFetchUsersPrivacyAttributesDobCalculation(t *testing.T) {
 	eighteenYearsAgo := time.Now().AddDate(-18, 0, 0)
 	eighteenYearsAgoMinusMonth := time.Now().AddDate(-18, -1, 0)
 
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 	testUserCountryCode := "US"
 	testUserDateOfBirth := fmt.Sprintf("%d/%d/%d", eighteenYearsAgo.Year(), eighteenYearsAgo.Month(), eighteenYearsAgo.Day())
 	testUserDateOfBirth2 := fmt.Sprintf("%d/%d/%d", eighteenYearsAgoMinusMonth.Year(), eighteenYearsAgoMinusMonth.Month(), eighteenYearsAgoMinusMonth.Day())
@@ -92,7 +92,7 @@ func TestFetchUsersPrivacyAttributes(t *testing.T) {
 	ctx := context.Background()
 
 	// Test setting
-	testUserUrn := "soundcloud:users:123456"
+	testUserUrn := "urn:user:123456"
 	testUserCountryCode := "US"
 	testUserDateOfBirth := "2000/01/01"
 	testDate := time.Now()
