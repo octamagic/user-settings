@@ -36,3 +36,14 @@ testapp
 
 .git-credentials
 .task
+
+# terraform
+.terraform/
+*.tfplan
+tfplan.binary
+backend.hcl
+*.auto.tfvars
+!*.auto.tfvars.example
+
+# actions-toolkit checkout during CI
+.toolkit/

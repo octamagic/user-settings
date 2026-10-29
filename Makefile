@@ -2,7 +2,7 @@ MODULE      := github.com/patrickisgreat/user-settings
 GENERATED   := internal/generated
 UNIT_PKGS   := $(shell go list ./... | grep -v -e /generated -e /tests/)
 
-.PHONY: help tools generate generate-proto generate-mocks build run test test-integration test-e2e test-all lint docker-up docker-down
+.PHONY: help tools generate generate-proto generate-mocks build run test test-coverage test-integration test-e2e test-all lint docker-up docker-down tf-fmt tf-lint tf-test
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-18s %s\n", $$1, $$2}'
@@ -52,3 +52,12 @@ docker-up: ## Start DynamoDB Local and the admin UI
 
 docker-down: ## Stop local containers
 	docker compose down
+
+tf-fmt: ## Format Terraform
+	terraform fmt -recursive terraform
+
+tf-lint: ## Lint Terraform with tflint
+	tflint --init >/dev/null && tflint --recursive --format compact
+
+tf-test: ## Validate and test Terraform against a local tf-tools checkout (TF_TOOLS_DIR)
+	scripts/tf-local.sh
