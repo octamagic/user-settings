@@ -28,7 +28,7 @@ per country live in an in-memory rules repository.
 
 ## Quick start
 
-Prerequisites: Go 1.24+, Docker, `protoc` (only if you change the protos).
+Prerequisites: Go 1.26+, Docker, `protoc` (only if you change the protos).
 
 ```bash
 make docker-up              # DynamoDB Local on :8900, admin UI on :8001

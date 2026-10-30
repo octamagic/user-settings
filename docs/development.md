@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Go 1.24 or newer (see `go.mod`)
+- Go 1.26 or newer (see `go.mod`)
 - Docker, for DynamoDB Local and the test containers
 - `protoc` (`brew install protobuf`), only if you edit `rpc/*.proto`
 - `golangci-lint` v2 (`brew install golangci-lint`)
