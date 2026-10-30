@@ -19,7 +19,7 @@ jobs:
   go:
     uses: octamagic/actions-toolkit/.github/workflows/go-ci.yml@v0
     with:
-      golangci-lint-version: v2.1
+      golangci-lint-version: v2.15
       # Unit packages only; the suites under tests/ need Docker and run in `integration`.
       test-command: go test -race -coverprofile=coverage.out -covermode=atomic $(go list ./... | grep -v -e /generated -e /tests/)
       coverage: false
