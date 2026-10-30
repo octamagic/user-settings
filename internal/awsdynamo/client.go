@@ -9,7 +9,8 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/aws/aws-sdk-go-v2/otelaws"
+	"github.com/aws/smithy-go/tracing/smithyoteltracing"
+	"go.opentelemetry.io/otel"
 )
 
 // Config selects the region and, for local development, a custom endpoint.
@@ -33,9 +34,10 @@ func NewClient(ctx context.Context, cfg Config) (*dynamodb.Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("loading AWS config: %w", err)
 	}
-	otelaws.AppendMiddlewares(&awsCfg.APIOptions)
-
 	return dynamodb.NewFromConfig(awsCfg, func(o *dynamodb.Options) {
+		// The SDK traces every operation through smithy-go; adapt the global
+		// provider that telemetry.Setup installs.
+		o.TracerProvider = smithyoteltracing.Adapt(otel.GetTracerProvider())
 		if cfg.Endpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.Endpoint)
 		}
